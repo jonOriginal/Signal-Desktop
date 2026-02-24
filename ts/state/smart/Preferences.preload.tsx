@@ -467,6 +467,9 @@ export function SmartPreferences(): React.JSX.Element | null {
     setContentProtection(value);
     await window.Events.setContentProtection(value);
   };
+  const onEndCallOnLockChange = async (value: boolean) => {
+    setEndCallOnLock(value);
+  }
   const onThemeChange = (value: ThemeType) => {
     setThemeSetting(value);
     drop(window.Events.setThemeSetting(value));
@@ -569,7 +572,7 @@ export function SmartPreferences(): React.JSX.Element | null {
   const hasLinkPreviews = items.linkPreviews ?? false;
   const hasReadReceipts = items['read-receipt-setting'] ?? false;
   const hasTypingIndicators = items.typingIndicators ?? false;
-  const blockedCount =
+    const blockedCount =
     (items['blocked-groups']?.length ?? 0) +
     (items['blocked-uuids']?.length ?? 0);
   const emojiSkinToneDefault = items.emojiSkinToneDefault ?? EmojiSkinTone.None;
@@ -630,6 +633,10 @@ export function SmartPreferences(): React.JSX.Element | null {
   const [hasAutoConvertEmoji, onAutoConvertEmojiChange] = createItemsAccess(
     'autoConvertEmoji',
     true
+  );
+  const [hasEndCallOnLock, setEndCallOnLock] = createItemsAccess(
+    'endCallOnLock',
+    false
   );
   const [hasKeepMutedChatsArchived, onKeepMutedChatsArchivedChange] =
     createItemsAccess('keepMutedChatsArchived', false, () => {
@@ -848,6 +855,7 @@ export function SmartPreferences(): React.JSX.Element | null {
           hasCallNotifications={hasCallNotifications}
           hasCallRingtoneNotification={hasCallRingtoneNotification}
           hasContentProtection={hasContentProtection}
+          hasEndCallOnLock={hasEndCallOnLock}
           hasCountMutedConversations={hasCountMutedConversations}
           hasFailedStorySends={hasFailedStorySends}
           hasHideMenuBar={hasHideMenuBar}
@@ -901,6 +909,7 @@ export function SmartPreferences(): React.JSX.Element | null {
           onCallNotificationsChange={onCallNotificationsChange}
           onCallRingtoneNotificationChange={onCallRingtoneNotificationChange}
           onContentProtectionChange={onContentProtectionChange}
+          onEndCallOnLockChange={onEndCallOnLockChange}
           onCountMutedConversationsChange={onCountMutedConversationsChange}
           onEmojiSkinToneDefaultChange={onEmojiSkinToneDefaultChange}
           onHasKeyTransparencyDisabledChanged={
