@@ -5,7 +5,7 @@
   "productName": "Signal",
   "description": "Private messaging from your desktop",
   "desktopName": "signal.desktop",
-  "repository": "https://github.com/signalapp/Signal-Desktop.git",
+  "repository": "https://github.com/jonOriginal/Signal-Desktop.git",
   "version": "8.2.0-alpha.1",
   "license": "AGPL-3.0-only",
   "author": {
@@ -438,7 +438,7 @@
       "publish": [
         {
           "provider": "generic",
-          "url": "https://updates.signal.org/desktop"
+          "url": "${env.DESKTOP_UPDATE_URL}"
         }
       ],
       "mergeASARs": true,
@@ -484,7 +484,7 @@
       "publish": [
         {
           "provider": "generic",
-          "url": "https://updates.signal.org/desktop"
+          "url": "${env.DESKTOP_UPDATE_URL}"
         }
       ],
       "releaseInfo": {
