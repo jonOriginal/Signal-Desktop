@@ -9,25 +9,20 @@ const { default: packageJson } = require('./packageJson.js');
 // ---------------------------
 // Environment variables for prefixes
 const CHANNEL = process.env.SIGNAL_CHANNEL || 'production'; // production, alpha, beta, adhoc
+const DISPLAY_NAME = process.env.DISPLAY_NAME_PREFIX || 'Signal';
 const APP_NAME = process.env.APP_NAME_PREFIX || 'signal';
 const DOMAIN = process.env.DOMAIN_PREFIX || 'org.whispersystems';
-
-const NAME_PREFIX = `${APP_NAME}-desktop`;
-const PRODUCT_PREFIX = APP_NAME === 'signal' ? 'Signal' : _.startCase(APP_NAME);
-const APPID_PREFIX = `org.${DOMAIN}.${APP_NAME}-desktop`;
-const DESKTOP_PREFIX = APP_NAME;
-const EXEC_PREFIX = `${APP_NAME}-desktop`;
 
 // ---------------------------
 // Generate final names
 const config = {
-  name: `${NAME_PREFIX}-${CHANNEL}`,
-  productName: `${PRODUCT_PREFIX} ${_.startCase(CHANNEL)}`,
-  appId: `${APPID_PREFIX}-${CHANNEL}`,
-  wmClass: `${APP_NAME} ${_.startCase(CHANNEL)}`,
-  desktopName: `${DESKTOP_PREFIX} ${_.startCase(CHANNEL)}.desktop`,
-  executableName: `${EXEC_PREFIX}-${CHANNEL}`,
-}
+  name: `${APP_NAME}-${CHANNEL}`,
+  productName: `${DISPLAY_NAME}`,
+  appId: `${DOMAIN}.${APP_NAME}.${CHANNEL}`,
+  wmClass: `${APP_NAME}-${CHANNEL}`,
+  desktopName: `${APP_NAME}.desktop`,
+  executableName: `${APP_NAME}-desktop-${CHANNEL}`,
+};
 
 // ---------------------------
 // Update package.json dynamically
