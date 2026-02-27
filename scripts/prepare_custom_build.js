@@ -5,7 +5,7 @@
 const fs = require('node:fs');
 const _ = require('lodash');
 const { default: packageJson } = require('./packageJson.js');
-const { default: defaultsConfig } = require('./defaultsConfig.js');
+const { default: defaultsConfig } = require('./defaultsJson.js');
 
 // ---------------------------
 // Environment variables for prefixes
