@@ -18,11 +18,6 @@ jobs:
 
       - name: Install Desktop node_modules
         run: pnpm install
-      - run: pnpm run generate
-      - run: pnpm run lint
-
-      - name: Install Desktop node_modules
-        run: pnpm install
 
       - run: pnpm run generate
       - run: pnpm run prepare-custom-build
