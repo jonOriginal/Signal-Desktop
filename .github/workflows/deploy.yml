@@ -1,0 +1,45 @@
+﻿name: deploy.yml
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+    deploy:
+      runs-on: windows-latest
+      steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install Desktop node_modules
+        run: pnpm install
+      - run: pnpm run generate
+      - run: pnpm run lint
+
+      - name: Install Desktop node_modules
+        run: pnpm install
+
+      - run: pnpm run generate
+      - run: pnpm run prepare-custom-build
+
+      - name: Build with NSIS
+        run: pnpm run build:release
+
+      - name: Install cloudflared
+        run: choco install cloudflared
+
+      - name: Setup Cloudflare WARP
+        uses: Boostport/setup-cloudflare-warp@v1
+        with:
+          organization: ${{ secrets.CLOUDFLARE_ORGANIZATION }}
+          auth_client_id: ${{ secrets.CLOUDFLARE_AUTH_CLIENT_ID }}
+          auth_client_secret: ${{ secrets.CLOUDFLARE_AUTH_CLIENT_SECRET }}
+
+      - name: Rsync files over Cloudflare SSH
+        run: |
+          rsync -avz -e "ssh -p 22 -o StrictHostKeyChecking=no" ./local-folder/ deployer@${{ secrets.SSH_HOST }}:/var/www/desktop/
