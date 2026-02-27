@@ -439,7 +439,7 @@
       "publish": [
         {
           "provider": "generic",
-          "url": "${env.DESKTOP_UPDATE_URL}"
+          "url": "https://updates.signal.org/desktop"
         }
       ],
       "mergeASARs": true,
@@ -476,7 +476,7 @@
       "publish": [
         {
           "provider": "generic",
-          "url": "${env.DESKTOP_UPDATE_URL}"
+          "url": "https://updates.signal.org/desktop"
         }
       ],
       "releaseInfo": {
