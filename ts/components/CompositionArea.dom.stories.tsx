@@ -79,6 +79,7 @@ export default {
     i18n,
     isDisabled: false,
     isFormattingEnabled: true,
+    isPollSend1to1Enabled: true,
     messageCompositionId: '456',
     sendEditedMessage: action('sendEditedMessage'),
     sendMultiMediaMessage: action('sendMultiMediaMessage'),
@@ -111,6 +112,9 @@ export default {
     // MediaQualitySelector
     setMediaQualitySetting: action('setMediaQualitySetting'),
     shouldSendHighQualityAttachments: false,
+    // ViewOnce
+    isViewOnce: false,
+    setViewOnce: action('setViewOnce'),
     // CompositionInput
     onEditorStateChange: action('onEditorStateChange'),
     onTextTooLong: action('onTextTooLong'),
@@ -206,6 +210,23 @@ export function Attachments(args: Props): React.JSX.Element {
     <CompositionArea
       {...args}
       theme={theme}
+      draftAttachments={[
+        fakeDraftAttachment({
+          contentType: IMAGE_JPEG,
+          url: landscapeGreenUrl,
+        }),
+      ]}
+    />
+  );
+}
+
+export function ViewOnceEnabled(args: Props): React.JSX.Element {
+  const theme = useContext(StorybookThemeContext);
+  return (
+    <CompositionArea
+      {...args}
+      theme={theme}
+      isViewOnce
       draftAttachments={[
         fakeDraftAttachment({
           contentType: IMAGE_JPEG,

@@ -198,6 +198,7 @@ import type {
   GetMessagesBetweenOptions,
   MaybeStaleCallHistory,
   ExistingAttachmentData,
+  ExistingAttachmentUploadData,
 } from './Interface.std.js';
 import {
   AttachmentDownloadSource,
@@ -228,7 +229,6 @@ import {
   insertOrUpdateCallLinkFromSync,
   updateCallLink,
   updateCallLinkState,
-  updateCallLinkStateAndEpoch,
   updateDefunctCallLink,
 } from './server/callLinks.node.js';
 import {
@@ -560,6 +560,7 @@ export const DataReader: ServerReadableInterface = {
 
   getStatisticsForLogging,
 
+  getMostRecentAttachmentUploadData,
   getBackupCdnObjectMetadata,
   getBackupAttachmentDownloadProgress,
   getAttachmentReferencesForMessages,
@@ -671,7 +672,6 @@ export const DataWriter: ServerWritableInterface = {
   insertOrUpdateCallLinkFromSync,
   updateCallLink,
   updateCallLinkState,
-  updateCallLinkStateAndEpoch,
   beginDeleteAllCallLinks,
   beginDeleteCallLink,
   deleteCallHistoryByRoomId,
@@ -3043,6 +3043,35 @@ function isAttachmentSafeToDelete(db: ReadableDB, path: string): boolean {
   `;
 
   return db.prepare(query, { pluck: true }).get(params) === 0;
+}
+
+function getMostRecentAttachmentUploadData(
+  db: ReadableDB,
+  plaintextHash: string
+): ExistingAttachmentUploadData | undefined {
+  const [query, params] = sql`
+    SELECT 
+      key,
+      digest,
+      transitCdnKey AS cdnKey,
+      transitCdnNumber AS cdnNumber,
+      transitCdnUploadTimestamp AS uploadTimestamp,
+      incrementalMac,
+      incrementalMacChunkSize as chunkSize
+    FROM message_attachments
+    INDEXED BY message_attachments_plaintextHash
+    WHERE 
+      plaintextHash = ${plaintextHash} AND
+      key IS NOT NULL AND
+      digest IS NOT NULL AND
+      transitCdnKey IS NOT NULL AND
+      transitCdnNumber IS NOT NULL AND
+      transitCdnUploadTimestamp IS NOT NULL
+    ORDER BY transitCdnUploadTimestamp DESC
+    LIMIT 1
+  `;
+
+  return db.prepare(query).get<ExistingAttachmentUploadData>(params);
 }
 
 function _testOnlyRemoveMessageAttachments(

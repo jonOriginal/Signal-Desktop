@@ -112,6 +112,8 @@ import type {
 
 const log = createLogger('SendMessage');
 
+const MAX_EMBEDDED_GROUP_CHANGE_BYTES = 2048;
+
 export type SendIdentifierData =
   | {
       accessKey: string;
@@ -253,9 +255,12 @@ export type PollVoteBuildOptions = Required<
   >;
 
 export type PollTerminateBuildOptions = Required<
-  Pick<MessageOptionsType, 'groupV2' | 'timestamp' | 'pollTerminate'>
+  Pick<MessageOptionsType, 'timestamp' | 'pollTerminate'>
 > &
-  Pick<MessageOptionsType, 'profileKey' | 'expireTimer' | 'expireTimerVersion'>;
+  Pick<
+    MessageOptionsType,
+    'groupV2' | 'profileKey' | 'expireTimer' | 'expireTimerVersion'
+  >;
 
 class Message {
   attachments: ReadonlyArray<Proto.IAttachmentPointer>;
@@ -416,7 +421,19 @@ class Message {
       proto.groupV2 = new Proto.GroupContextV2();
       proto.groupV2.masterKey = this.groupV2.masterKey;
       proto.groupV2.revision = this.groupV2.revision;
-      proto.groupV2.groupChange = this.groupV2.groupChange || null;
+
+      const { groupChange } = this.groupV2;
+      if (groupChange) {
+        if (groupChange.byteLength <= MAX_EMBEDDED_GROUP_CHANGE_BYTES) {
+          proto.groupV2.groupChange = groupChange;
+        } else {
+          // As a message-size optimization, we do not embed large updates and receiving
+          // devices fetch them from the group server instead
+          log.info(
+            `Discarding oversized group change proto (${groupChange.byteLength} bytes)`
+          );
+        }
+      }
     }
     if (this.sticker) {
       proto.sticker = new Proto.DataMessage.Sticker();
@@ -929,10 +946,12 @@ export class MessageSender {
     const dataMessage = new Proto.DataMessage();
     dataMessage.timestamp = Long.fromNumber(timestamp);
 
-    const groupContext = new Proto.GroupContextV2();
-    groupContext.masterKey = groupV2.masterKey;
-    groupContext.revision = groupV2.revision;
-    dataMessage.groupV2 = groupContext;
+    if (groupV2) {
+      const groupContext = new Proto.GroupContextV2();
+      groupContext.masterKey = groupV2.masterKey;
+      groupContext.revision = groupV2.revision;
+      dataMessage.groupV2 = groupContext;
+    }
 
     if (typeof expireTimer !== 'undefined') {
       dataMessage.expireTimer = expireTimer;
