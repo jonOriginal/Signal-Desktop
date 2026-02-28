@@ -1,7 +1,7 @@
 ﻿const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 
-const DEFAULTS_JSON_PATH = join(__dirname, '..', 'config', 'defaults.json');
+const DEFAULTS_JSON_PATH = join(__dirname, '..', 'config', 'default.json');
 
 const json = JSON.parse(readFileSync(DEFAULTS_JSON_PATH, 'utf8'));
 

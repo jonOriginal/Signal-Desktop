@@ -55,7 +55,7 @@ fs.writeFileSync('./package.json', JSON.stringify(packageJson, null, 2));
 console.log(`package.json updated for ${CHANNEL} build`);
 
 updateDefaultsConfig(defaultsConfig, config);
-fs.writeFileSync('./config/defaults.js', JSON.stringify(defaultsConfig, null, 2));
+fs.writeFileSync('./config/default.json', JSON.stringify(defaultsConfig, null, 2));
 
 console.log(`defaultsConfig.js updated for ${CHANNEL} build`);
 
