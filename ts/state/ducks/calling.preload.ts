@@ -131,6 +131,8 @@ import {
 } from '../../textsecure/WebAPI.preload.js';
 import { itemStorage } from '../../textsecure/Storage.preload.js';
 import type { SizeCallbackType } from '../../calling/VideoSupport.preload.js';
+import { notificationService } from '../../services/notifications.preload.js';
+import { NotificationType } from '../../types/notifications.std.js';
 
 const { omit } = lodash;
 
@@ -1323,6 +1325,16 @@ function callStateChange(
       (isEnded && !wasAccepted && isRemoteHangup)
     ) {
       await callingTones.playEndCall();
+      notificationService.notify(
+        {
+          conversationId: payload.conversationId,
+          message: 'Call Ended',
+          sentAt: Date.now(),
+          silent: false,
+          title: 'Call Ended',
+          type: NotificationType.Message
+        }
+      );
     }
 
     dispatch({
