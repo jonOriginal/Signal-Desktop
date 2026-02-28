@@ -10,4 +10,5 @@ module.exports = {
   tailwindStylesheet: './stylesheets/tailwind-config.css',
   tailwindFunctions: ['tw'],
   tailwindAttributes: [],
+  endOfLine: 'auto',
 };

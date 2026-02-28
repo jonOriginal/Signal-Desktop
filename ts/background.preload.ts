@@ -1302,6 +1302,9 @@ export async function startApp(): Promise<void> {
   });
 
   window.Whisper.events.on('powerMonitorLockScreen', () => {
+    if (!itemStorage.get('endCallOnLock')) {
+      return;
+    }
     window.reduxActions.calling.hangUpActiveCall('powerMonitorLockScreen');
   });
 

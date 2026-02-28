@@ -140,6 +140,7 @@ export type PropsDataType = {
   hasCallNotifications: boolean;
   hasCallRingtoneNotification: boolean;
   hasContentProtection: boolean | undefined;
+  hasEndCallOnLock: boolean;
   hasCountMutedConversations: boolean;
   hasHideMenuBar?: boolean;
   hasIncomingCallNotifications: boolean;
@@ -304,6 +305,7 @@ type PropsFunctionType = {
   onCallNotificationsChange: CheckboxChangeHandlerType;
   onCallRingtoneNotificationChange: CheckboxChangeHandlerType;
   onContentProtectionChange: CheckboxChangeHandlerType;
+  onEndCallOnLockChange: CheckboxChangeHandlerType;
   onCountMutedConversationsChange: CheckboxChangeHandlerType;
   onEmojiSkinToneDefaultChange: (emojiSkinTone: EmojiSkinTone) => void;
   onHasKeyTransparencyDisabledChanged: SelectChangeHandlerType<boolean>;
@@ -417,6 +419,7 @@ export function Preferences({
   hasCallNotifications,
   hasCallRingtoneNotification,
   hasContentProtection,
+  hasEndCallOnLock,
   hasCountMutedConversations,
   hasFailedStorySends,
   hasHideMenuBar,
@@ -468,6 +471,7 @@ export function Preferences({
   onCallNotificationsChange,
   onCallRingtoneNotificationChange,
   onContentProtectionChange,
+  onEndCallOnLockChange,
   onCountMutedConversationsChange,
   onEmojiSkinToneDefaultChange,
   onHasKeyTransparencyDisabledChanged,
@@ -1754,6 +1758,15 @@ export function Preferences({
         </SettingsRow>
         {isContentProtectionSupported && (
           <SettingsRow title={i18n('icu:Preferences__Privacy__Application')}>
+            <Checkbox
+              checked={hasEndCallOnLock}
+              disabled={hasEndCallOnLock === undefined}
+              description={i18n('icu:Preferences__end-on-lock--description')}
+              label={i18n('icu:Preferences__end-on-lock--label')}
+              moduleClassName="Preferences__checkbox"
+              name="endCallOnLock"
+              onChange={onEndCallOnLockChange}
+            />
             <Checkbox
               checked={hasContentProtection}
               disabled={hasContentProtection === undefined}

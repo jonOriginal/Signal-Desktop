@@ -142,6 +142,7 @@ export type StorageAccessType = {
   preferContactAvatars: boolean;
   textFormatting: boolean;
   typingIndicators: boolean;
+  endCallOnLock: boolean;
   sealedSenderIndicators: boolean;
   storageFetchComplete: boolean;
   avatarUrl: string | undefined;

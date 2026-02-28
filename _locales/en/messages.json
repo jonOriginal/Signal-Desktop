@@ -8481,6 +8481,14 @@
     "messageformat": "Application",
     "description": "Title of Application section in Settings > Privacy"
   },
+  "icu:Preferences__end-on-lock--label": {
+    "messageformat": "End calls on lock",
+    "description": "Label of checkbox in Settings > Privacy > Application"
+  },
+  "icu:Preferences__end-on-lock--description": {
+    "messageformat": "Automatically end calls when your computer is locked for added privacy.",
+    "description": "Description of checkbox in Settings > Privacy > Application"
+  },
   "icu:Preferences__content-protection--label": {
     "messageformat": "Screen security",
     "description": "Label of checkbox in Settings > Privacy > Application"
