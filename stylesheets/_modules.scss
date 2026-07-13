@@ -21,7 +21,6 @@
 }
 
 .module-title-bar-drag-area {
-  -webkit-app-region: drag;
   height: var(--title-bar-drag-area-height);
   inset-inline-start: 0;
   position: fixed;
@@ -992,12 +991,6 @@ $message-padding-horizontal: 12px;
   }
 }
 
-.module-message__link-preview__icon_container {
-  margin: -2px;
-  margin-inline-end: 8px;
-  display: inline-block;
-}
-
 .module-message__link-preview__text--with-icon {
   margin-top: 5px;
 }
@@ -1027,8 +1020,7 @@ $message-padding-horizontal: 12px;
   -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
+  word-break: auto-phrase;
 
   @include mixins.light-theme {
     color: variables.$color-gray-90;
@@ -1106,8 +1098,7 @@ $message-padding-horizontal: 12px;
 
   text-align: start;
   overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
+  word-break: auto-phrase;
   white-space: pre-wrap;
 
   @include mixins.light-theme {
@@ -1181,13 +1172,7 @@ $message-padding-horizontal: 12px;
 }
 .module-message__text--delete-for-everyone {
   user-select: none;
-
-  @include mixins.light-theme {
-    color: variables.$color-gray-90;
-  }
-  @include mixins.dark-theme {
-    color: variables.$color-gray-05;
-  }
+  color: light-dark(variables.$color-gray-60, variables.$color-gray-25);
 }
 
 .module-message__metadata {
@@ -2149,6 +2134,7 @@ $timer-icons:
 
 .module-inline-notification-wrapper {
   outline: none;
+  position: relative;
 
   &:focus {
     @include mixins.keyboard-mode {
@@ -2303,6 +2289,7 @@ button.ConversationDetails__action-button {
 
   &__message {
     @include mixins.font-body-2;
+    user-select: none;
     text-align: center;
     margin-bottom: 12px;
 
@@ -2320,20 +2307,6 @@ button.ConversationDetails__action-button {
 
     &__learn-more {
       text-decoration: none;
-    }
-  }
-
-  &__buttons {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-
-    .module-Button {
-      min-width: 80px;
-
-      &:not(:last-of-type) {
-        margin-inline-end: 8px;
-      }
     }
   }
 }
@@ -2654,22 +2627,39 @@ button.module-image__border-overlay:focus {
   gap: 1px;
 }
 
-.module-image-grid__download-pill {
-  @include mixins.position-absolute-center;
+.module-image-grid__download-overlay {
   @include mixins.button-reset;
 
   & {
-    background-color: variables.$color-black-alpha-80;
-    color: variables.$color-white;
-    backdrop-filter: blur(10px);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    inset-inline: 0;
+    z-index: variables.$z-index-above-above-base;
 
-    height: 44px;
-    border-radius: 44px;
-
-    display: inline-flex;
-    flex-direction: row;
+    display: flex;
     align-items: center;
+    justify-content: center;
   }
+
+  @include mixins.keyboard-mode {
+    &:focus .module-image-grid__download-pill {
+      box-shadow: 0px 0px 0px 2px variables.$color-ultramarine;
+    }
+  }
+}
+
+.module-image-grid__download-pill {
+  background-color: variables.$color-black-alpha-80;
+  color: variables.$color-white;
+  backdrop-filter: blur(10px);
+
+  height: 44px;
+  border-radius: 44px;
+
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
 }
 .module-image-grid__download_pill__icon-wrapper {
   position: relative;
@@ -3547,8 +3537,8 @@ button.module-image__border-overlay:focus {
 }
 .module-ongoing-call {
   &__remote-video-enabled {
-    height: 100%;
-    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
     position: relative;
     &--reconnecting {
       filter: blur(15px);
@@ -3996,9 +3986,8 @@ button.module-image__border-overlay:focus {
       max-width: 100%;
 
       &__contact-name {
+        @include mixins.font-body-2-medium;
         flex-grow: 1;
-        font-size: 13px;
-        line-height: 18px;
         color: variables.$color-white;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -4010,6 +3999,11 @@ button.module-image__border-overlay:focus {
       &--clickable {
         @include mixins.button-reset;
       }
+    }
+
+    &__dropdown button {
+      // Matches CallingAudioIndicator
+      background: rgba(variables.$color-gray-80, 0.7);
     }
 
     &--hand-raised &__footer {
@@ -4024,6 +4018,10 @@ button.module-image__border-overlay:focus {
         display: none;
         color: variables.$color-black;
         margin-inline-end: 12px;
+      }
+
+      &:has(.CallingStatusIndicator--NextHandRaised) {
+        background: variables.$color-next-raised-hand;
       }
     }
 
@@ -4160,25 +4158,6 @@ button.module-image__border-overlay:focus {
 
   &__controls--fadeOut {
     @include module-ongoing-call__controls--fade-out;
-  }
-}
-
-.module-calling-tools {
-  position: absolute;
-  top: calc(32px + var(--title-bar-drag-area-height));
-  inset-inline-end: 0;
-  display: flex;
-
-  &__button {
-    margin-inline-end: 12px;
-  }
-
-  &__button:last-child {
-    margin-inline-end: 24px;
-  }
-  .ContextMenu__container {
-    background: none;
-    text-wrap: nowrap;
   }
 }
 
@@ -4488,12 +4467,13 @@ button.module-image__border-overlay:focus {
       list-style-type: none;
       border-radius: 6px;
       cursor: auto;
+      user-select: none;
     }
-    &:hover {
+    &.module-calling-participants-list__clickable {
+      cursor: pointer;
+    }
+    &:not(.module-calling-participants-list__me):hover {
       background-color: variables.$color-gray-62;
-    }
-    &[disabled] {
-      cursor: auto;
     }
   }
 
@@ -4505,13 +4485,8 @@ button.module-image__border-overlay:focus {
   }
 
   &__name {
-    display: inline-block;
     font-size: 13px;
     margin-inline-start: 8px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    vertical-align: middle;
-    white-space: nowrap;
   }
 
   &__header {
@@ -4584,9 +4559,10 @@ button.module-image__border-overlay:focus {
     );
   }
 
-  &__remove {
+  &__menu-icon {
+    display: none;
     @include mixins.color-svg(
-      '../images/icons/v3/minus/minus-circle-compact.svg',
+      '../images/icons/v3/more/more.svg',
       variables.$color-white
     );
   }
@@ -5037,6 +5013,7 @@ button.module-calling-participants-list__contact {
             overflow: hidden;
             text-overflow: ellipsis;
             text-align: start;
+            white-space-collapse: preserve;
 
             @include mixins.light-theme {
               color: variables.$color-gray-60;
@@ -5777,6 +5754,54 @@ button.module-calling-participants-list__contact {
   outline: none;
 }
 
+.CollapseSet__height-container {
+  overflow: hidden;
+  height: 0px;
+  display: none;
+  /* stylelint-disable-next-line property-no-unknown */
+  interpolate-size: allow-keywords;
+  transition-property: display, height;
+  transition-behavior: allow-discrete;
+  transition-duration: 200ms;
+  transition-timing-function: linear(
+    0,
+    0.024 1.7%,
+    0.097 3.7%,
+    0.55 12%,
+    0.75 16.6%,
+    0.887 21.4%,
+    0.935 24%,
+    0.97 26.8%,
+    1.002 31.5%,
+    1.013 37.5%,
+    1.001 62.7%,
+    1
+  );
+}
+
+.CollapseSet__height-container--expanded {
+  display: block;
+  height: auto;
+
+  @starting-style {
+    height: 0;
+  }
+}
+
+.CollapseSet__transparency-container {
+  opacity: 0;
+  transition: opacity 25ms linear;
+}
+
+.CollapseSet__transparency-container--expanded {
+  transition-duration: 120ms;
+  transition-delay: 200ms;
+  opacity: 1;
+  @starting-style {
+    opacity: 0;
+  }
+}
+
 // Module: Last Seen Indicator
 
 .module-last-seen-indicator {
@@ -6146,15 +6171,6 @@ button.module-calling-participants-list__contact {
   z-index: variables.$z-index-popup-overlay;
 }
 
-// Module: Error Modal
-
-.module-error-modal__button-container {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
-}
-
 .module-button {
   &__small {
     @include mixins.font-body-2;
@@ -6321,10 +6337,6 @@ button.module-calling-participants-list__contact {
 
   &--with-reactions {
     margin-bottom: -6px;
-  }
-
-  &--deleted-for-everyone {
-    font-style: italic;
   }
 }
 

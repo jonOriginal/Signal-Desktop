@@ -2,18 +2,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import omit from 'lodash/omit.js';
-import { createLogger } from '../logging/log.std.js';
-import type { AttachmentType } from '../types/Attachment.std.js';
+import { createLogger } from '../logging/log.std.ts';
+import type { AttachmentType } from '../types/Attachment.std.ts';
 import type { MessageAttributesType } from '../model-types.d.ts';
-import { getAttachmentsForMessage } from '../state/selectors/message.preload.js';
-import { isAciString } from './isAciString.std.js';
-import { isDirectConversation } from './whatTypeOfConversation.dom.js';
-import { softAssert, strictAssert } from './assert.std.js';
-import { getMessageSentTimestamp } from './getMessageSentTimestamp.std.js';
-import { isOlderThan } from './timestamp.std.js';
-import { DAY } from './durations/index.std.js';
-import { getMessageById } from '../messages/getMessageById.preload.js';
-import { MessageModel } from '../models/messages.preload.js';
+import { getAttachmentsForMessage } from '../state/selectors/message.preload.ts';
+import { backupsService } from '../services/backups/index.preload.ts';
+import { isAciString } from './isAciString.std.ts';
+import { isDirectConversation } from './whatTypeOfConversation.dom.ts';
+import { softAssert, strictAssert } from './assert.std.ts';
+import { getMessageSentTimestamp } from './getMessageSentTimestamp.std.ts';
+import { isOlderThan } from './timestamp.std.ts';
+import { DAY } from './durations/index.std.ts';
+import { getMessageById } from '../messages/getMessageById.preload.ts';
+import { MessageModel } from '../models/messages.preload.ts';
 
 const log = createLogger('hydrateStoryContext');
 
@@ -88,7 +89,10 @@ export async function hydrateStoryContext(
     return newMessageAttributes;
   }
 
-  const attachments = getAttachmentsForMessage({ ...storyMessage.attributes });
+  const attachments = getAttachmentsForMessage(
+    { ...storyMessage.attributes },
+    { hasMediaBackups: backupsService.hasMediaBackups() }
+  );
   let attachment: AttachmentType | undefined = attachments?.[0];
   if (attachment && !attachment.url && !attachment.textAttachment) {
     attachment = undefined;

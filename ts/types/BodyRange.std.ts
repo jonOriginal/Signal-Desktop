@@ -1,21 +1,21 @@
 // Copyright 2023 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-/* eslint-disable @typescript-eslint/no-namespace */
-
 import lodash from 'lodash';
+import * as z from 'zod';
 
-import { SignalService as Proto } from '../protobuf/index.std.js';
-import { createLogger } from '../logging/log.std.js';
-import { missingCaseError } from '../util/missingCaseError.std.js';
-import { isNotNil } from '../util/isNotNil.std.js';
+import { SignalService as Proto } from '../protobuf/index.std.ts';
+import { createLogger } from '../logging/log.std.ts';
+import { missingCaseError } from '../util/missingCaseError.std.ts';
+import { isNotNil } from '../util/isNotNil.std.ts';
 import {
   SNIPPET_LEFT_PLACEHOLDER,
   SNIPPET_RIGHT_PLACEHOLDER,
   SNIPPET_TRUNCATION_PLACEHOLDER,
-} from '../util/search.std.js';
-import { assertDev } from '../util/assert.std.js';
-import type { AciString } from './ServiceId.std.js';
+} from '../util/search.std.ts';
+import { assertDev } from '../util/assert.std.ts';
+import { aciSchema, type AciString } from './ServiceId.std.ts';
+import { signalservice } from '../protobuf/compiled.std.js';
 
 const { isEqual, isNumber, omit, orderBy, partition } = lodash;
 
@@ -35,7 +35,6 @@ export enum DisplayStyle {
   SearchKeywordHighlight = 'SearchKeywordHighlight',
 }
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export namespace BodyRange {
   // re-export for convenience
   export type Style = Proto.BodyRange.Style;
@@ -256,6 +255,7 @@ export function insertRange(
     ];
   }
 
+  // oxlint-disable-next-line typescript/no-base-to-string, typescript/restrict-template-expressions
   log.error(`MessageTextRenderer: unhandled range ${range}`);
   throw new Error('unhandled range');
 }
@@ -508,6 +508,9 @@ export function processBodyRangesForSearchResult({
 
   // To format the matches identified by FTS, we create synthetic BodyRanges to mix in
   // with all the other formatting embedded in this message.
+  type HighlightMatch = RegExpExecArray & {
+    indices: Record<0 | 1, [number, number]>;
+  };
   const highlightMatches = snippet.matchAll(
     new RegExp(
       `${SNIPPET_LEFT_PLACEHOLDER}(.*?)${SNIPPET_RIGHT_PLACEHOLDER}`,
@@ -518,9 +521,7 @@ export function processBodyRangesForSearchResult({
   let placeholderCharsSkipped = 0;
   for (const highlightMatch of highlightMatches) {
     // TS < 5 does not have types for RegExpIndicesArray
-    const { indices } = highlightMatch as RegExpMatchArray & {
-      indices: Array<Array<number>>;
-    };
+    const { indices } = highlightMatch as HighlightMatch;
     const [wholeMatchStartIdx] = indices[0];
     const [matchedWordStartIdx, matchedWordEndIdx] = indices[1];
     adjustedBodyRanges.push({
@@ -543,7 +544,7 @@ export function processBodyRangesForSearchResult({
   };
 }
 
-export const SPOILER_REPLACEMENT = '■■■■';
+const SPOILER_REPLACEMENT = '■■■■';
 
 /**
  * Replace text in a string at a given range, returning the new string. The
@@ -869,3 +870,20 @@ export function areBodyRangesEqual(
 
   return isEqual(normalizedLeft, sortedRight);
 }
+
+const bodyRangeOffsetSchema = z.number().int().min(0);
+const bodyRangeStyleSchema = z.nativeEnum(signalservice.BodyRange.Style);
+
+export const bodyRangeSchema = z.union([
+  z.object({
+    start: bodyRangeOffsetSchema,
+    length: bodyRangeOffsetSchema,
+    mentionAci: aciSchema,
+  }),
+  z.object({
+    start: bodyRangeOffsetSchema,
+    length: bodyRangeOffsetSchema,
+    style: bodyRangeStyleSchema,
+    spoilerId: z.number().optional(),
+  }),
+]);

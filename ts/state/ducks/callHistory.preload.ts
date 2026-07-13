@@ -4,38 +4,39 @@
 import type { ReadonlyDeep } from 'type-fest';
 import type { ThunkAction, ThunkDispatch } from 'redux-thunk';
 import lodash from 'lodash';
-import type { StateType as RootStateType } from '../reducer.preload.js';
+import type { StateType as RootStateType } from '../reducer.preload.ts';
 import {
   clearCallHistoryDataAndSync,
   markAllCallHistoryReadAndSync,
-} from '../../util/callDisposition.preload.js';
-import type { BoundActionCreatorsMapObject } from '../../hooks/useBoundActions.std.js';
-import { useBoundActions } from '../../hooks/useBoundActions.std.js';
-import type { ToastActionType } from './toast.preload.js';
-import { showToast } from './toast.preload.js';
-import { DataReader, DataWriter } from '../../sql/Client.preload.js';
-import { ToastType } from '../../types/Toast.dom.js';
+} from '../../util/callDisposition.preload.ts';
+import type { BoundActionCreatorsMapObject } from '../../hooks/useBoundActions.std.ts';
+import { useBoundActions } from '../../hooks/useBoundActions.std.ts';
+import type { ToastActionType } from './toast.preload.ts';
+import { showToast } from './toast.preload.ts';
+import { DataReader, DataWriter } from '../../sql/Client.preload.ts';
+import { ToastType } from '../../types/Toast.dom.tsx';
 import {
   ClearCallHistoryResult,
   type CallHistoryDetails,
-} from '../../types/CallDisposition.std.js';
-import { createLogger } from '../../logging/log.std.js';
-import * as Errors from '../../types/errors.std.js';
+} from '../../types/CallDisposition.std.ts';
+import { createLogger } from '../../logging/log.std.ts';
+import * as Errors from '../../types/errors.std.ts';
 import {
   getCallHistoryLatestCall,
   getCallHistorySelector,
-} from '../selectors/callHistory.std.js';
+} from '../selectors/callHistory.std.ts';
 import {
   getCallsHistoryForRedux,
   getCallsHistoryUnreadCountForRedux,
   loadCallHistory,
-} from '../../services/callHistoryLoader.preload.js';
-import { makeLookup } from '../../util/makeLookup.std.js';
-import { missingCaseError } from '../../util/missingCaseError.std.js';
-import { getIntl } from '../selectors/user.std.js';
-import { ButtonVariant } from '../../components/Button.dom.js';
-import type { ShowErrorModalActionType } from './globalModals.preload.js';
-import { SHOW_ERROR_MODAL } from './globalModals.preload.js';
+} from '../../services/callHistoryLoader.preload.ts';
+import { makeLookup } from '../../util/makeLookup.std.ts';
+import { missingCaseError } from '../../util/missingCaseError.std.ts';
+import { getIntl } from '../selectors/user.std.ts';
+import type { ShowErrorModalActionType } from './globalModals.preload.ts';
+import { SHOW_ERROR_MODAL } from './globalModals.preload.ts';
+import type { ErrorModalDataProps } from '../../components/ErrorModal.dom.tsx';
+import { strictAssert } from '../../util/assert.std.ts';
 
 const { debounce, omit } = lodash;
 
@@ -114,13 +115,21 @@ const updateCallHistoryUnreadCountDebounced = debounce(
   300
 );
 
-function updateCallHistoryUnreadCount(): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  CallHistoryUpdateUnread
-> {
+function updateConversationsUnreadCounts(
+  conversationIdsOrConversationPeerIds: ReadonlyArray<string>
+) {
+  for (const id of conversationIdsOrConversationPeerIds) {
+    const conversation = window.ConversationController.get(id);
+    strictAssert(conversation, `Missing conversation: ${id}`);
+    conversation.throttledUpdateUnread();
+  }
+}
+
+function updateCallHistoryUnreadCount(
+  conversationIdsOrConversationPeerIds: ReadonlyArray<string>
+): ThunkAction<void, RootStateType, unknown, CallHistoryUpdateUnread> {
   return async dispatch => {
+    updateConversationsUnreadCounts(conversationIdsOrConversationPeerIds);
     await updateCallHistoryUnreadCountDebounced(dispatch);
   };
 }
@@ -132,16 +141,13 @@ function markCallHistoryRead(
   return async dispatch => {
     try {
       await DataWriter.markCallHistoryRead(callId);
-      window.ConversationController.get(
-        conversationId
-      )?.throttledUpdateUnread();
     } catch (error) {
       log.error(
         'markCallHistoryRead: Error marking call history read',
         Errors.toLogFormat(error)
       );
     } finally {
-      dispatch(updateCallHistoryUnreadCount());
+      dispatch(updateCallHistoryUnreadCount([conversationId]));
     }
   };
 }
@@ -158,7 +164,7 @@ export function markCallHistoryReadInConversation(
     try {
       await markAllCallHistoryReadAndSync(callHistory, true);
     } finally {
-      dispatch(updateCallHistoryUnreadCount());
+      dispatch(updateCallHistoryUnreadCount([callHistory.peerId]));
     }
   };
 }
@@ -171,9 +177,12 @@ function markCallsTabViewed(): ThunkAction<
 > {
   return async (dispatch, getState) => {
     const latestCall = getCallHistoryLatestCall(getState());
+
     if (latestCall != null) {
+      const conversationIds =
+        await DataReader.getCallHistoryUnreadCallConversationIds();
       await markAllCallHistoryReadAndSync(latestCall, false);
-      dispatch(updateCallHistoryUnreadCount());
+      dispatch(updateCallHistoryUnreadCount(conversationIds));
     }
   };
 }
@@ -207,43 +216,47 @@ function clearAllCallHistory(): ThunkAction<
   CallHistoryReset | ToastActionType | ShowErrorModalActionType
 > {
   return async (dispatch, getState) => {
+    let unreadConversationIds: ReadonlyArray<string> = [];
     try {
       const latestCall = getCallHistoryLatestCall(getState());
       if (latestCall == null) {
         return;
       }
 
+      unreadConversationIds =
+        await DataReader.getCallHistoryUnreadCallConversationIds();
       const result = await clearCallHistoryDataAndSync(latestCall);
+
       if (result === ClearCallHistoryResult.Success) {
         dispatch(showToast({ toastType: ToastType.CallHistoryCleared }));
       } else if (result === ClearCallHistoryResult.Error) {
         const i18n = getIntl(getState());
+        const payload: ErrorModalDataProps = {
+          // @ts-expect-error ConfirmationDialog migration: Needs title
+          title: null,
+          description: i18n('icu:CallsTab__ClearCallHistoryError'),
+        };
         dispatch({
           type: SHOW_ERROR_MODAL,
-          payload: {
-            title: null,
-            description: i18n('icu:CallsTab__ClearCallHistoryError'),
-            buttonVariant: ButtonVariant.Primary,
-          },
+          payload,
         });
       } else if (result === ClearCallHistoryResult.ErrorDeletingCallLinks) {
         const i18n = getIntl(getState());
-        dispatch({
-          type: SHOW_ERROR_MODAL,
-          payload: {
-            title: null,
-            description: i18n(
-              'icu:CallsTab__ClearCallHistoryError--call-links'
-            ),
-            buttonVariant: ButtonVariant.Primary,
-          },
-        });
+        const payload: ErrorModalDataProps = {
+          // @ts-expect-error ConfirmationDialog migration: Needs title
+          title: null,
+          description: i18n('icu:CallsTab__ClearCallHistoryError--call-links'),
+        };
+        dispatch({ type: SHOW_ERROR_MODAL, payload });
       } else {
         throw missingCaseError(result);
       }
     } catch (error) {
       log.error('Error clearing call history', Errors.toLogFormat(error));
     } finally {
+      // Ensure previously unread conversations are updated
+      updateConversationsUnreadCounts(unreadConversationIds);
+
       // Just force a reload, even if the clear failed.
       dispatch(reloadCallHistory());
     }
@@ -279,6 +292,7 @@ export const actions = {
   clearAllCallHistory,
   updateCallHistoryUnreadCount,
   markCallHistoryRead,
+  markCallHistoryReadInConversation,
   markCallsTabViewed,
 };
 

@@ -1,72 +1,84 @@
 // Copyright 2020 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { useState } from 'react';
-import type { ReactNode } from 'react';
+import { useState, useCallback } from 'react';
+import type { ReactNode, JSX } from 'react';
 
 import type {
   ConversationType,
   ShowConversationType,
-} from '../../state/ducks/conversations.preload.js';
-import type { BadgeType } from '../../badges/types.std.js';
-import type { HasStories } from '../../types/Stories.std.js';
-import type { LocalizerType, ThemeType } from '../../types/Util.std.js';
-import type { ViewUserStoriesActionCreatorType } from '../../state/ducks/stories.preload.js';
-import { StoryViewModeType } from '../../types/Stories.std.js';
-import { createLogger } from '../../logging/log.std.js';
-import { Avatar, AvatarBlur, AvatarSize } from '../Avatar.dom.js';
-import { AvatarLightbox } from '../AvatarLightbox.dom.js';
-import { BadgeDialog } from '../BadgeDialog.dom.js';
-import { ConfirmationDialog } from '../ConfirmationDialog.dom.js';
-import { Modal } from '../Modal.dom.js';
-import { RemoveGroupMemberConfirmationDialog } from './RemoveGroupMemberConfirmationDialog.dom.js';
-import { missingCaseError } from '../../util/missingCaseError.std.js';
-import { UserText } from '../UserText.dom.js';
-import { Button, ButtonIconType, ButtonVariant } from '../Button.dom.js';
-import { isInSystemContacts } from '../../util/isInSystemContacts.std.js';
-import { InContactsIcon } from '../InContactsIcon.dom.js';
-import { canHaveNicknameAndNote } from '../../util/nicknames.dom.js';
-import { getThemeByThemeType } from '../../util/theme.std.js';
+} from '../../state/ducks/conversations.preload.ts';
+import type { BadgeType } from '../../badges/types.std.ts';
+import type { HasStories } from '../../types/Stories.std.ts';
+import type { LocalizerType, ThemeType } from '../../types/Util.std.ts';
+import type { ViewUserStoriesActionCreatorType } from '../../state/ducks/stories.preload.ts';
+import { StoryViewModeType } from '../../types/Stories.std.ts';
+import { createLogger } from '../../logging/log.std.ts';
+import { Avatar, AvatarBlur, AvatarSize } from '../Avatar.dom.tsx';
+import { AvatarLightbox } from '../AvatarLightbox.dom.tsx';
+import { BadgeDialog } from '../BadgeDialog.dom.tsx';
+import { Modal } from '../Modal.dom.tsx';
+import { RemoveGroupMemberConfirmationDialog } from './RemoveGroupMemberConfirmationDialog.dom.tsx';
+import { missingCaseError } from '../../util/missingCaseError.std.ts';
+import { UserText } from '../UserText.dom.tsx';
+import { Button, ButtonIconType, ButtonVariant } from '../Button.dom.tsx';
+import { isInSystemContacts } from '../../util/isInSystemContacts.std.ts';
+import { InContactsIcon } from '../InContactsIcon.dom.tsx';
+import { canHaveNicknameAndNote } from '../../util/nicknames.dom.ts';
+import { getThemeByThemeType } from '../../util/theme.std.ts';
 import {
   InAnotherCallTooltip,
   getTooltipContent,
-} from './InAnotherCallTooltip.dom.js';
-import type {
-  ContactModalStateType,
-  ToggleGroupMemberLabelInfoModalType,
-} from '../../state/ducks/globalModals.preload.js';
-import { GroupMemberLabel } from './ContactName.dom.js';
-import { SignalService as Proto } from '../../protobuf/index.std.js';
+} from './InAnotherCallTooltip.dom.tsx';
+import type { ToggleGroupMemberLabelInfoModalType } from '../../state/ducks/globalModals.preload.ts';
+import type { ContactModalStateType } from '../../types/globalModals.std.ts';
+import { GroupMemberLabel } from './ContactName.dom.tsx';
+import { SignalService as Proto } from '../../protobuf/index.std.ts';
+import { AxoSymbol } from '../../axo/AxoSymbol.dom.tsx';
+import { tw } from '../../axo/tw.dom.tsx';
+import { strictAssert } from '../../util/assert.std.ts';
+import type { RemoveClientType } from '../../types/Calling.std.ts';
+import type { ContactNameColorType } from '../../types/Colors.std.ts';
+import type { Emoji } from '../../axo/emoji.std.ts';
+import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
 
 const ACCESS_ENUM = Proto.AccessControl.AccessRequired;
 
 const log = createLogger('ContactModal');
 
 export type PropsDataType = {
+  activeCallDemuxId?: number;
   areWeASubscriber: boolean;
   areWeAdmin: boolean;
   badges: ReadonlyArray<BadgeType>;
   contact?: ConversationType;
-  contactLabelEmoji: string | undefined;
+  contactLabelEmoji: Emoji.Variant | undefined;
   contactLabelString: string | undefined;
-  contactNameColor: string | undefined;
+  contactNameColor: ContactNameColorType | undefined;
   conversation?: ConversationType;
   hasStories?: HasStories;
   readonly i18n: LocalizerType;
   isAdmin: boolean;
   isMember: boolean;
+  isMuted: boolean;
+  isRemoteMuteVisible: boolean;
+  isRemoveFromCallVisible: boolean;
   theme: ThemeType;
   hasActiveCall: boolean;
   isInFullScreenCall: boolean;
 };
 
 type PropsActionType = {
+  blockClientFromCall: (payload: RemoveClientType) => void;
   blockConversation: (id: string) => void;
   hideContactModal: () => void;
+  onNavigateToDonate: () => void;
   onOpenEditNicknameAndNoteModal: () => void;
   onOutgoingAudioCallInConversation: (conversationId: string) => unknown;
   onOutgoingVideoCallInConversation: (conversationId: string) => unknown;
+  removeClientFromCall: (payload: RemoveClientType) => void;
   removeMemberFromGroup: (conversationId: string, contactId: string) => void;
+  sendRemoteMute: (demuxId: number) => void;
   showConversation: ShowConversationType;
   startAvatarDownload: () => void;
   toggleAboutContactModal: (options: ContactModalStateType) => unknown;
@@ -91,12 +103,16 @@ enum SubModalState {
   ToggleAdmin = 'ToggleAdmin',
   MemberRemove = 'MemberRemove',
   ConfirmingBlock = 'ConfirmingBlock',
+  ConfirmingMute = 'ConfirmingMute',
+  RemoveFromCall = 'RemoveFromCall',
 }
 
 export function ContactModal({
+  activeCallDemuxId,
   areWeAdmin,
   areWeASubscriber,
   badges,
+  blockClientFromCall,
   blockConversation,
   contact,
   contactLabelEmoji,
@@ -110,10 +126,16 @@ export function ContactModal({
   i18n,
   isAdmin,
   isMember,
+  isMuted,
+  isRemoteMuteVisible,
+  isRemoveFromCallVisible,
+  onNavigateToDonate,
   onOpenEditNicknameAndNoteModal,
   onOutgoingAudioCallInConversation,
   onOutgoingVideoCallInConversation,
+  removeClientFromCall,
   removeMemberFromGroup,
+  sendRemoteMute,
   showConversation,
   startAvatarDownload,
   theme,
@@ -124,7 +146,7 @@ export function ContactModal({
   togglePip,
   toggleSafetyNumberModal,
   viewUserStories,
-}: PropsType): React.JSX.Element {
+}: PropsType): JSX.Element {
   if (!contact) {
     throw new Error('Contact modal opened without a matching contact');
   }
@@ -135,7 +157,7 @@ export function ContactModal({
   );
   const modalTheme = getThemeByThemeType(theme);
 
-  const renderQuickActions = React.useCallback(
+  const renderQuickActions = useCallback(
     (conversationId: string) => {
       const inAnotherCallTooltipContent = hasActiveCall
         ? getTooltipContent(i18n)
@@ -236,52 +258,52 @@ export function ContactModal({
         conversation.accessControlAttributes === ACCESS_ENUM.ADMINISTRATOR
       ) {
         modalNode = (
-          <ConfirmationDialog
-            dialogName="ContactModal.toggleAdmin"
-            actions={[
-              {
-                action: () => toggleAdmin(conversation.id, contact.id),
-                text: isAdmin
-                  ? i18n('icu:ContactModal--rm-admin')
-                  : i18n('icu:ContactModal--make-admin'),
-                style: 'affirmative',
-              },
-            ]}
-            i18n={i18n}
-            onClose={() => setSubModalState(SubModalState.None)}
+          <AxoConfirmDialog.Root
+            open
+            onOpenChange={() => setSubModalState(SubModalState.None)}
             title={i18n('icu:ContactModal--rm-admin-info', {
               contact: contact.title,
             })}
+            description={i18n('icu:ContactModal--rm-admin--clear-label')}
           >
-            {i18n('icu:ContactModal--rm-admin--clear-label')}
-          </ConfirmationDialog>
+            <AxoConfirmDialog.Cancel />
+            <AxoConfirmDialog.Action
+              variant="destructive"
+              onClick={() => toggleAdmin(conversation.id, contact.id)}
+            >
+              {i18n('icu:ContactModal--rm-admin')}
+            </AxoConfirmDialog.Action>
+          </AxoConfirmDialog.Root>
         );
         break;
       }
 
       modalNode = (
-        <ConfirmationDialog
-          dialogName="ContactModal.toggleAdmin"
-          actions={[
-            {
-              action: () => toggleAdmin(conversation.id, contact.id),
-              text: isAdmin
-                ? i18n('icu:ContactModal--rm-admin')
-                : i18n('icu:ContactModal--make-admin'),
-              style: 'affirmative',
-            },
-          ]}
-          i18n={i18n}
-          onClose={() => setSubModalState(SubModalState.None)}
+        <AxoConfirmDialog.Root
+          open
+          onOpenChange={() => setSubModalState(SubModalState.None)}
+          // @ts-expect-error ConfirmationDialog migration: Needs title
+          title={null}
+          description={
+            isAdmin
+              ? i18n('icu:ContactModal--rm-admin-info', {
+                  contact: contact.title,
+                })
+              : i18n('icu:ContactModal--make-admin-info', {
+                  contact: contact.title,
+                })
+          }
         >
-          {isAdmin
-            ? i18n('icu:ContactModal--rm-admin-info', {
-                contact: contact.title,
-              })
-            : i18n('icu:ContactModal--make-admin-info', {
-                contact: contact.title,
-              })}
-        </ConfirmationDialog>
+          <AxoConfirmDialog.Cancel />
+          <AxoConfirmDialog.Action
+            variant={isAdmin ? 'destructive' : 'primary'}
+            onClick={() => toggleAdmin(conversation.id, contact.id)}
+          >
+            {isAdmin
+              ? i18n('icu:ContactModal--rm-admin')
+              : i18n('icu:ContactModal--make-admin')}
+          </AxoConfirmDialog.Action>
+        </AxoConfirmDialog.Root>
       );
       break;
     case SubModalState.MemberRemove:
@@ -307,23 +329,94 @@ export function ContactModal({
       break;
     case SubModalState.ConfirmingBlock:
       modalNode = (
-        <ConfirmationDialog
-          dialogName="ContactModal.confirmBlock"
-          actions={[
-            {
-              text: i18n('icu:MessageRequests--block'),
-              action: () => blockConversation(contact.id),
-              style: 'affirmative',
-            },
-          ]}
-          i18n={i18n}
-          onClose={() => setSubModalState(SubModalState.None)}
+        <AxoConfirmDialog.Root
+          open
+          onOpenChange={() => setSubModalState(SubModalState.None)}
           title={i18n('icu:MessageRequests--block-direct-confirm-title', {
             title: contact.title,
           })}
+          description={i18n('icu:MessageRequests--block-direct-confirm-body')}
         >
-          {i18n('icu:MessageRequests--block-direct-confirm-body')}
-        </ConfirmationDialog>
+          <AxoConfirmDialog.Cancel />
+          <AxoConfirmDialog.Action
+            variant="destructive"
+            onClick={() => blockConversation(contact.id)}
+          >
+            {i18n('icu:MessageRequests--block')}
+          </AxoConfirmDialog.Action>
+        </AxoConfirmDialog.Root>
+      );
+      break;
+    case SubModalState.ConfirmingMute:
+      modalNode = (
+        <AxoConfirmDialog.Root
+          open
+          onOpenChange={() => setSubModalState(SubModalState.None)}
+          // @ts-expect-error ConfirmationDialog migration: Needs title
+          title={null}
+          description={i18n('icu:ContactModal--confirm-mute-body', {
+            contact: contact.title,
+          })}
+        >
+          <AxoConfirmDialog.Cancel />
+          <AxoConfirmDialog.Action
+            variant="primary"
+            onClick={() => {
+              strictAssert(
+                activeCallDemuxId != null,
+                'activeCallDemuxId must exist'
+              );
+              hideContactModal();
+              sendRemoteMute(activeCallDemuxId);
+            }}
+          >
+            {i18n('icu:ContactModal--confirm-mute-primary-button')}
+          </AxoConfirmDialog.Action>
+        </AxoConfirmDialog.Root>
+      );
+      break;
+    case SubModalState.RemoveFromCall:
+      modalNode = (
+        <AxoConfirmDialog.Root
+          open
+          onOpenChange={() => setSubModalState(SubModalState.None)}
+          // @ts-expect-error ConfirmationDialog migration: Needs title
+          title={null}
+          description={i18n(
+            'icu:CallingAdhocCallInfo__RemoveClientDialogBody',
+            {
+              name: contact.title,
+            }
+          )}
+        >
+          <AxoConfirmDialog.Cancel />
+          <AxoConfirmDialog.Action
+            variant="destructive"
+            onClick={() => {
+              strictAssert(
+                activeCallDemuxId != null,
+                'activeCallDemuxId must exist'
+              );
+              hideContactModal();
+              blockClientFromCall({ demuxId: activeCallDemuxId });
+            }}
+          >
+            {i18n('icu:CallingAdhocCallInfo__RemoveClientDialogButton--block')}
+          </AxoConfirmDialog.Action>
+          <AxoConfirmDialog.Action
+            variant="destructive"
+            onClick={() => {
+              strictAssert(
+                activeCallDemuxId != null,
+                'activeCallDemuxId must exist'
+              );
+              hideContactModal();
+              removeClientFromCall({ demuxId: activeCallDemuxId });
+            }}
+          >
+            {i18n('icu:CallingAdhocCallInfo__RemoveClientDialogButton--remove')}
+          </AxoConfirmDialog.Action>
+        </AxoConfirmDialog.Root>
       );
       break;
     default: {
@@ -337,6 +430,12 @@ export function ContactModal({
   switch (view) {
     case ContactModalView.Default: {
       const preferredBadge: undefined | BadgeType = badges[0];
+      const canDoGroupAdminActions =
+        !contact.isMe &&
+        areWeAdmin &&
+        isMember &&
+        conversation?.id &&
+        !conversation.terminated;
       return (
         <Modal
           modalName="ContactModal"
@@ -502,7 +601,7 @@ export function ContactModal({
                   {i18n('icu:ContactModal--add-to-group')}
                 </button>
               )}
-              {!contact.isMe && areWeAdmin && isMember && conversation?.id && (
+              {canDoGroupAdminActions && (
                 <>
                   <button
                     type="button"
@@ -530,6 +629,35 @@ export function ContactModal({
                   </button>
                 </>
               )}
+              {isRemoteMuteVisible && (
+                <button
+                  type="button"
+                  className="ContactModal__button"
+                  onClick={() => setSubModalState(SubModalState.ConfirmingMute)}
+                  disabled={isMuted}
+                >
+                  <AxoSymbol.Icon symbol="mic-slash" size={20} label={null} />
+                  <span className={tw('ms-[12px]')}>
+                    {i18n('icu:ContactModal--mute-audio')}
+                  </span>
+                </button>
+              )}
+              {isRemoveFromCallVisible && (
+                <button
+                  type="button"
+                  className="ContactModal__button"
+                  onClick={() => setSubModalState(SubModalState.RemoveFromCall)}
+                >
+                  <AxoSymbol.Icon
+                    symbol="minus-circle"
+                    size={20}
+                    label={null}
+                  />
+                  <span className={tw('ms-[12px]')}>
+                    {i18n('icu:ContactModal--remove-from-call')}
+                  </span>
+                </button>
+              )}
             </div>
             {modalNode}
           </div>
@@ -556,6 +684,7 @@ export function ContactModal({
           firstName={contact.firstName}
           i18n={i18n}
           onClose={() => setView(ContactModalView.Default)}
+          onDonate={onNavigateToDonate}
           title={contact.title}
         />
       );

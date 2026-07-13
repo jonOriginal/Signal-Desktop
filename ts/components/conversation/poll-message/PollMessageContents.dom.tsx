@@ -1,19 +1,19 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { memo, useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef, type JSX } from 'react';
 import { Checkbox } from 'radix-ui';
-import { AnimatePresence, motion } from 'framer-motion';
-import { type TailwindStyles, tw } from '../../../axo/tw.dom.js';
-import { AxoButton } from '../../../axo/AxoButton.dom.js';
-import { AxoSymbol } from '../../../axo/AxoSymbol.dom.js';
-import type { DirectionType } from '../Message.dom.js';
-import type { PollWithResolvedVotersType } from '../../../state/selectors/message.preload.js';
-import type { LocalizerType } from '../../../types/Util.std.js';
-import { PollVotesModal } from './PollVotesModal.dom.js';
-import { SpinnerV2 } from '../../SpinnerV2.dom.js';
-import { usePrevious } from '../../../hooks/usePrevious.std.js';
-import { UserText } from '../../UserText.dom.js';
+import { AnimatePresence, motion } from 'motion/react';
+import { type TailwindStyles, tw } from '../../../axo/tw.dom.tsx';
+import { AxoButton } from '../../../axo/AxoButton.dom.tsx';
+import { AxoSymbol } from '../../../axo/AxoSymbol.dom.tsx';
+import type { DirectionType } from '../Message.dom.tsx';
+import type { PollWithResolvedVotersType } from '../../../state/selectors/message.preload.ts';
+import type { LocalizerType } from '../../../types/Util.std.ts';
+import { PollVotesModal } from './PollVotesModal.dom.tsx';
+import { SpinnerV2 } from '../../SpinnerV2.dom.tsx';
+import { usePreviousDeprecated } from '../../../hooks/usePrevious.std.ts';
+import { UserText } from '../../UserText.dom.tsx';
 
 function VotedCheckmark({
   isIncoming,
@@ -21,7 +21,7 @@ function VotedCheckmark({
 }: {
   isIncoming: boolean;
   i18n: LocalizerType;
-}): React.JSX.Element {
+}): JSX.Element {
   return (
     <div
       className={tw(
@@ -49,7 +49,7 @@ type PollCheckboxProps = {
 };
 
 const PollCheckbox = memo((props: PollCheckboxProps) => {
-  const { isIncoming, isPending, checked } = props;
+  const { checked, isIncoming, isPending, onCheckedChange } = props;
 
   let bgColor: TailwindStyles;
   let borderColor: TailwindStyles;
@@ -107,12 +107,12 @@ const PollCheckbox = memo((props: PollCheckboxProps) => {
         )}
       </AnimatePresence>
       <Checkbox.Root
-        checked={props.checked}
-        onCheckedChange={props.onCheckedChange}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
         className={tw(
           'flex size-6 items-center justify-center rounded-full',
           isPending ? '' : 'border-[1.5px]',
-          'outline-0 outline-border-focused focused:outline-[2.5px]',
+          'outline-none keyboard-mode:focus:outline-focus-ring',
           'overflow-hidden',
           'transition-colors duration-250',
           bgColor,
@@ -146,12 +146,13 @@ export type PollMessageContentsProps = {
   direction: DirectionType;
   i18n: LocalizerType;
   messageId: string;
+  canEndPoll?: boolean;
+  canSendPollVote: boolean;
   sendPollVote: (params: {
     messageId: string;
     optionIndexes: ReadonlyArray<number>;
   }) => void;
   endPoll: (messageId: string) => void;
-  canEndPoll?: boolean;
 };
 
 const DELAY_BEFORE_SHOWING_PENDING_ANIMATION = 500;
@@ -160,15 +161,19 @@ export function PollMessageContents({
   direction,
   i18n,
   messageId,
+  canEndPoll,
+  canSendPollVote,
   sendPollVote,
   endPoll,
-  canEndPoll,
-}: PollMessageContentsProps): React.JSX.Element {
+}: PollMessageContentsProps): JSX.Element {
   const [showVotesModal, setShowVotesModal] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
   const hasPendingVotes = poll.pendingVoteDiff && poll.pendingVoteDiff.size > 0;
-  const hadPendingVotesInLastRender = usePrevious(hasPendingVotes, undefined);
+  const hadPendingVotesInLastRender = usePreviousDeprecated(
+    hasPendingVotes,
+    undefined
+  );
 
   const pendingCheckTimer = useRef<NodeJS.Timeout | null>(null);
   const isIncoming = direction === 'incoming';
@@ -242,7 +247,7 @@ export function PollMessageContents({
   return (
     <div
       className={tw(
-        'text-start break-words whitespace-pre-wrap',
+        'text-start wrap-break-word whitespace-pre-wrap',
         'type-body-large',
         isIncoming ? 'text-label-primary' : 'text-label-primary-on-color',
         'w-[275px] max-w-full',
@@ -279,16 +284,16 @@ export function PollMessageContents({
             : weVotedForThis;
 
           return (
-            // eslint-disable-next-line react/no-array-index-key
+            // oxlint-disable-next-line react/no-array-index-key
             <div key={`option-${index}`} className={tw('flex gap-3')}>
-              {poll.terminatedAt == null && (
+              {canSendPollVote && poll.terminatedAt == null && (
                 // 3px offset: type-body-large has 14px font-size and 20px line-height,
                 // creating 3px space above text. This aligns checkbox with text baseline.
                 <div className={tw('mt-[3px] self-start')}>
                   <PollCheckbox
                     checked={shouldShowCheckmark}
                     onCheckedChange={next =>
-                      handlePollOptionClicked(index, Boolean(next))
+                      handlePollOptionClicked(index, next)
                     }
                     isIncoming={isIncoming}
                     isPending={isVotePending}
@@ -298,7 +303,9 @@ export function PollMessageContents({
 
               <div className={tw('flex min-w-0 flex-1 flex-col gap-1')}>
                 <div className={tw('flex items-start justify-between gap-3')}>
-                  <span className={tw('min-w-0 type-body-large break-words')}>
+                  <span
+                    className={tw('min-w-0 type-body-large wrap-break-word')}
+                  >
                     <UserText text={option} />
                   </span>
                   <div
@@ -340,7 +347,7 @@ export function PollMessageContents({
                   />
                   <div
                     className={tw(
-                      'absolute inset-y-0 start-0 rounded-s-full',
+                      'absolute inset-y-0 inset-s-0 rounded-s-full',
                       'transition-[width] duration-250 motion-reduce:transition-none',
                       isIncoming
                         ? 'bg-color-fill-primary'
@@ -356,7 +363,7 @@ export function PollMessageContents({
       </div>
 
       <div className={tw('mt-4 flex h-10 items-center justify-center')}>
-        <AnimatePresence exitBeforeEnter initial={false}>
+        <AnimatePresence mode="wait" initial={false}>
           {totalVotes > 0 ? (
             <motion.div
               key="view-votes"

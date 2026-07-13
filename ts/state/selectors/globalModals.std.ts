@@ -3,11 +3,11 @@
 
 import { createSelector } from 'reselect';
 
-import type { StateType } from '../reducer.preload.js';
-import type { GlobalModalsStateType } from '../ducks/globalModals.preload.js';
-import { UsernameOnboardingState } from '../../types/globalModals.std.js';
-import type { StateSelector } from '../types.std.js';
-import type { PinMessageDialogData } from '../smart/PinMessageDialog.preload.js';
+import type { StateType } from '../reducer.preload.ts';
+import type { GlobalModalsStateType } from '../ducks/globalModals.preload.ts';
+import { UsernameOnboardingState } from '../../types/globalModals.std.ts';
+import type { StateSelector } from '../types.std.ts';
+import type { PinMessageDialogData } from '../smart/PinMessageDialog.preload.tsx';
 
 export const getGlobalModalsState = (state: StateType): GlobalModalsStateType =>
   state.globalModals;
@@ -78,6 +78,11 @@ export const getSafetyNumberChangedBlockingData = createSelector(
 export const getDeleteMessagesProps = createSelector(
   getGlobalModalsState,
   ({ deleteMessagesProps }) => deleteMessagesProps
+);
+
+export const getDiscardDraftDialogProps = createSelector(
+  getGlobalModalsState,
+  ({ discardDraftDialogProps }) => discardDraftDialogProps
 );
 
 export const getDraftGifMessageSendModalProps = createSelector(

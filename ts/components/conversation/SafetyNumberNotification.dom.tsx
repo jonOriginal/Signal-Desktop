@@ -1,13 +1,13 @@
 // Copyright 2018 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React from 'react';
+import type { JSX } from 'react';
 
-import { Button, ButtonSize, ButtonVariant } from '../Button.dom.js';
-import { SystemMessage } from './SystemMessage.dom.js';
-import { ContactName } from './ContactName.dom.js';
-import { I18n } from '../I18n.dom.js';
-import type { LocalizerType } from '../../types/Util.std.js';
+import { Button, ButtonSize, ButtonVariant } from '../Button.dom.tsx';
+import { SystemMessage } from './SystemMessage.dom.tsx';
+import { ContactName } from './ContactName.dom.tsx';
+import { I18n } from '../I18n.dom.tsx';
+import type { LocalizerType } from '../../types/Util.std.ts';
 
 export type ContactType = {
   id: string;
@@ -34,7 +34,7 @@ export function SafetyNumberNotification({
   isGroup,
   i18n,
   toggleSafetyNumberModal,
-}: Props): React.JSX.Element {
+}: Props): JSX.Element {
   const name = (
     <span
       key="external-1"

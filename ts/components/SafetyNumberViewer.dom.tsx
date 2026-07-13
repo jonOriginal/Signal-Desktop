@@ -1,25 +1,25 @@
 // Copyright 2020 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useState, useCallback, type JSX, type MouseEvent } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 
-import { AxoSymbol } from '../axo/AxoSymbol.dom.js';
-import { AxoButton } from '../axo/AxoButton.dom.js';
-import { AxoDialog } from '../axo/AxoDialog.dom.js';
-import { QrCode } from './QrCode.dom.js';
-import type { ConversationType } from '../state/ducks/conversations.preload.js';
-import { I18n } from './I18n.dom.js';
-import { SpinnerV2 } from './SpinnerV2.dom.js';
-import type { LocalizerType } from '../types/Util.std.js';
-import type { SafetyNumberType } from '../types/safetyNumber.std.js';
+import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
+import { AxoButton } from '../axo/AxoButton.dom.tsx';
+import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { QrCode } from './QrCode.dom.tsx';
+import type { ConversationType } from '../state/ducks/conversations.preload.ts';
+import { I18n } from './I18n.dom.tsx';
+import { SpinnerV2 } from './SpinnerV2.dom.tsx';
+import type { LocalizerType } from '../types/Util.std.ts';
+import type { SafetyNumberType } from '../types/safetyNumber.std.ts';
 import {
   SAFETY_NUMBER_URL,
   KEY_TRANSPARENCY_URL,
-} from '../types/support.std.js';
+} from '../types/support.std.ts';
 import type { KeyTransparencyStatusType } from '../types/KeyTransparency.d.ts';
-import { missingCaseError } from '../util/missingCaseError.std.js';
-import { tw, type TailwindStyles } from '../axo/tw.dom.js';
+import { missingCaseError } from '../util/missingCaseError.std.ts';
+import { tw, type TailwindStyles } from '../axo/tw.dom.tsx';
 
 export type PropsType = {
   contact: ConversationType;
@@ -43,9 +43,9 @@ export function SafetyNumberViewer({
   keyTransparencyStatus,
   isKeyTransparencyEnabled,
   checkKeyTransparency,
-}: PropsType): React.JSX.Element | null {
+}: PropsType): JSX.Element | null {
   const containerClassName = tw(
-    'flex flex-col items-center justify-center gap-4 pb-8'
+    'flex flex-col items-center justify-center gap-4'
   );
 
   if (!safetyNumber) {
@@ -159,7 +159,7 @@ function KeyTransparency({
   }, []);
 
   const onKeyTransparencyClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent) => {
       e.preventDefault();
 
       switch (status) {
@@ -237,10 +237,10 @@ function KeyTransparency({
         className={tw(
           'h-12 w-full rounded-full px-5 py-3.5',
           'bg-fill-secondary text-label-primary',
-          'pressed:bg-fill-secondary-pressed'
+          'enabled:active:bg-fill-secondary-pressed'
         )}
       >
-        <AnimatePresence exitBeforeEnter initial={false}>
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             className={tw('flex h-5 items-center')}
             key={status}
@@ -329,15 +329,15 @@ function Popup({ i18n, contact, type, onClose }: PopupPropsType): JSX.Element {
     case 'ok':
       icon = 'check-circle';
       title = i18n('icu:SafetyNumberViewer__KeyTransparency__popup--ok__title');
-      body = i18n('icu:SafetyNumberViewer__KeyTransparency__popup--ok__body');
+      body = i18n('icu:SafetyNumberViewer__KeyTransparency__popup--ok__body-2');
       break;
     case 'fail':
       icon = 'info';
       title = i18n(
-        'icu:SafetyNumberViewer__KeyTransparency__popup--fail__title'
+        'icu:SafetyNumberViewer__KeyTransparency__popup--fail__title-2'
       );
       body = i18n(
-        'icu:SafetyNumberViewer__KeyTransparency__popup--fail__body',
+        'icu:SafetyNumberViewer__KeyTransparency__popup--fail__body-2',
         {
           name: contact.title,
         }
@@ -347,7 +347,7 @@ function Popup({ i18n, contact, type, onClose }: PopupPropsType): JSX.Element {
       icon = 'info';
       // Intentionally the same as in 'fail'
       title = i18n(
-        'icu:SafetyNumberViewer__KeyTransparency__popup--fail__title'
+        'icu:SafetyNumberViewer__KeyTransparency__popup--fail__title-2'
       );
       body = i18n(
         'icu:SafetyNumberViewer__KeyTransparency__popup--unavailable__body'

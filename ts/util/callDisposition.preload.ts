@@ -1,7 +1,6 @@
 // Copyright 2023 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import Long from 'long';
 import type { Call, PeekInfo, LocalDeviceState } from '@signalapp/ringrtc';
 import {
   CallState,
@@ -13,13 +12,13 @@ import {
 } from '@signalapp/ringrtc';
 import { ContentHint } from '@signalapp/libsignal-client';
 import lodash from 'lodash';
-import { strictAssert } from './assert.std.js';
-import { DataReader, DataWriter } from '../sql/Client.preload.js';
-import { SignalService as Proto } from '../protobuf/index.std.js';
-import { bytesToUuid, uuidToBytes } from './uuidToBytes.std.js';
-import { missingCaseError } from './missingCaseError.std.js';
-import { generateMessageId } from './generateMessageId.node.js';
-import { CallEndedReason, GroupCallJoinState } from '../types/Calling.std.js';
+import { strictAssert } from './assert.std.ts';
+import { DataReader, DataWriter } from '../sql/Client.preload.ts';
+import { SignalService as Proto } from '../protobuf/index.std.ts';
+import { bytesToUuid, uuidToBytes } from './uuidToBytes.std.ts';
+import { missingCaseError } from './missingCaseError.std.ts';
+import { generateMessageId } from './generateMessageId.node.ts';
+import { CallEndedReason, GroupCallJoinState } from '../types/Calling.std.ts';
 import {
   CallMode,
   DirectCallStatus,
@@ -35,43 +34,44 @@ import {
   AdhocCallStatus,
   CallStatusValue,
   callLogEventNormalizeSchema,
-  CallLogEvent,
   ClearCallHistoryResult,
-} from '../types/CallDisposition.std.js';
-import type { AciString } from '../types/ServiceId.std.js';
-import { isAciString } from './isAciString.std.js';
-import { isMe } from './whatTypeOfConversation.dom.js';
-import { createLogger } from '../logging/log.std.js';
-import * as Errors from '../types/errors.std.js';
-import { incrementMessageCounter } from './incrementMessageCounter.preload.js';
-import { ReadStatus } from '../messages/MessageReadStatus.std.js';
-import { SeenStatus, maxSeenStatus } from '../MessageSeenStatus.std.js';
-import { canConversationBeUnarchived } from './canConversationBeUnarchived.preload.js';
+} from '../types/CallDisposition.std.ts';
+import type { AciString } from '../types/ServiceId.std.ts';
+import { isAciString } from './isAciString.std.ts';
+import { isMe } from './whatTypeOfConversation.dom.ts';
+import { createLogger } from '../logging/log.std.ts';
+import * as Errors from '../types/errors.std.ts';
+import { incrementMessageCounter } from './incrementMessageCounter.preload.ts';
+import { ReadStatus } from '../messages/MessageReadStatus.std.ts';
+import { SeenStatus, maxSeenStatus } from '../MessageSeenStatus.std.ts';
+import { canConversationBeUnarchived } from './canConversationBeUnarchived.preload.ts';
 import type { ConversationAttributesType } from '../model-types.d.ts';
-import { singleProtoJobQueue } from '../jobs/singleProtoJobQueue.preload.js';
-import { MessageSender } from '../textsecure/SendMessage.preload.js';
-import * as Bytes from '../Bytes.std.js';
+import { singleProtoJobQueue } from '../jobs/singleProtoJobQueue.preload.ts';
+import { MessageSender } from '../textsecure/SendMessage.preload.ts';
+import * as Bytes from '../Bytes.std.ts';
 import type {
   CallDetails,
   CallEvent,
   CallEventDetails,
   CallHistoryDetails,
-  CallHistoryGroup,
   CallLogEventDetails,
   CallStatus,
   GroupCallMeta,
-} from '../types/CallDisposition.std.js';
-import type { ConversationType } from '../state/ducks/conversations.preload.js';
-import type { ConversationModel } from '../models/conversations.preload.js';
-import { drop } from './drop.std.js';
-import { sendCallLinkUpdateSync } from './sendCallLinkUpdateSync.preload.js';
-import { storageServiceUploadJob } from '../services/storage.preload.js';
-import { CallLinkFinalizeDeleteManager } from '../jobs/CallLinkFinalizeDeleteManager.preload.js';
-import { parsePartial, parseStrict } from './schemas.std.js';
-import { calling } from '../services/calling.preload.js';
-import { cleanupMessages } from './cleanup.preload.js';
-import { MessageModel } from '../models/messages.preload.js';
-import { itemStorage } from '../textsecure/Storage.preload.js';
+} from '../types/CallDisposition.std.ts';
+import type { ConversationType } from '../state/ducks/conversations.preload.ts';
+import type { ConversationModel } from '../models/conversations.preload.ts';
+import { drop } from './drop.std.ts';
+import { sendCallLinkUpdateSync } from './sendCallLinkUpdateSync.preload.ts';
+import { storageServiceUploadJob } from '../services/storage.preload.ts';
+import { CallLinkFinalizeDeleteManager } from '../jobs/CallLinkFinalizeDeleteManager.preload.ts';
+import { parseLoose, parseStrict } from './schemas.std.ts';
+import { calling } from '../services/calling.preload.ts';
+import { cleanupMessages } from './cleanup.preload.ts';
+import { MessageModel } from '../models/messages.preload.ts';
+import { itemStorage } from '../textsecure/Storage.preload.ts';
+import { update as updateExpiringMessagesService } from '../services/expiringMessagesDeletion.preload.ts';
+import type { DurationInSeconds } from './durations/duration-in-seconds.std.ts';
+import { isFeaturedEnabledNoRedux } from './isFeatureEnabled.dom.ts';
 
 const { isEqual } = lodash;
 
@@ -85,7 +85,7 @@ export function peerIdToLog(peerId: string, mode: CallMode): string {
   return mode === CallMode.Group ? `groupv2(${peerId})` : peerId;
 }
 
-export function formatCallEvent(callEvent: CallEventDetails): string {
+function formatCallEvent(callEvent: CallEventDetails): string {
   const {
     callId,
     peerId,
@@ -102,7 +102,7 @@ export function formatCallEvent(callEvent: CallEventDetails): string {
   return `CallEvent (${callId}, ${peerIdLog}, ${mode}, ${event}, ${direction}, ${type}, ${mode}, ${timestamp}, ${ringerId}, ${startedById}, ${eventSource})`;
 }
 
-export function formatCallHistory(callHistory: CallHistoryDetails): string {
+function formatCallHistory(callHistory: CallHistoryDetails): string {
   const {
     callId,
     peerId,
@@ -118,17 +118,14 @@ export function formatCallHistory(callHistory: CallHistoryDetails): string {
   return `CallHistory (${callId}, ${peerIdLog}, ${mode}, ${status}, ${direction}, ${type}, ${mode}, ${timestamp}, ${ringerId}, ${startedById})`;
 }
 
-export function formatCallHistoryGroup(
-  callHistoryGroup: CallHistoryGroup
-): string {
-  const { peerId, direction, status, type, mode, timestamp } = callHistoryGroup;
-  return `CallHistoryGroup (${peerId}, ${mode}, ${status}, ${direction}, ${type}, ${mode}, ${timestamp})`;
-}
-
 export function formatPeekInfo(peekInfo: PeekInfo): string {
   const { eraId, deviceCount, creator } = peekInfo;
   const callId = eraId != null ? getCallIdFromEra(eraId) : null;
-  const creatorAci = creator != null ? getCreatorAci(creator) : null;
+  let creatorAci: AciString | null = null;
+  if (creator != null) {
+    const creatorBytes: Uint8Array<ArrayBuffer> = creator;
+    creatorAci = getCreatorAci(creatorBytes);
+  }
   return `PeekInfo (${eraId}, ${callId}, ${creatorAci}, ${deviceCount})`;
 }
 
@@ -141,14 +138,14 @@ export function formatLocalDeviceState(
 }
 
 export function getCallIdFromRing(ringId: bigint): string {
-  return Long.fromValue(callIdFromRingId(ringId)).toString();
+  return callIdFromRingId(ringId).toString();
 }
 
 export function getCallIdFromEra(eraId: string): string {
-  return Long.fromValue(callIdFromEra(eraId)).toString();
+  return callIdFromEra(eraId).toString();
 }
 
-export function getCreatorAci(creator: Uint8Array): AciString {
+function getCreatorAci(creator: Uint8Array<ArrayBuffer>): AciString {
   const aci = bytesToUuid(creator);
   strictAssert(aci != null, 'creator uuid buffer was not a valid uuid');
   strictAssert(isAciString(aci), 'creator uuid buffer was not a valid aci');
@@ -162,7 +159,8 @@ export function getGroupCallMeta(
     return null;
   }
   const callId = getCallIdFromEra(peekInfo.eraId);
-  const ringerId = bytesToUuid(peekInfo.creator);
+  const creatorBytes: Uint8Array<ArrayBuffer> = peekInfo.creator;
+  const ringerId = bytesToUuid(creatorBytes);
   strictAssert(ringerId != null, 'peekInfo.creator was invalid uuid');
   strictAssert(isAciString(ringerId), 'peekInfo.creator was invalid aci');
   return { callId, ringerId };
@@ -205,11 +203,12 @@ export function convertJoinState(joinState: JoinState): GroupCallJoinState {
 // ----------------------
 
 export function getCallEventForProto(
-  callEventProto: Proto.SyncMessage.ICallEvent,
-  eventSource: string
+  callEventProto: Proto.SyncMessage.CallEvent.Params,
+  eventSource: string,
+  eventTimestamp: number
 ): CallEventDetails {
-  const callEvent = parsePartial(callEventNormalizeSchema, callEventProto);
-  const { callId, peerId, timestamp } = callEvent;
+  const callEvent = parseLoose(callEventNormalizeSchema, callEventProto);
+  const { callId, conversationId: peerId, timestamp } = callEvent;
 
   let type: CallType;
   if (callEvent.type === Proto.SyncMessage.CallEvent.Type.GROUP_CALL) {
@@ -234,10 +233,12 @@ export function getCallEventForProto(
   }
 
   let direction: CallDirection;
-  if (callEvent.direction === Proto.SyncMessage.CallEvent.Direction.INCOMING) {
+  if (
+    callEventProto.direction === Proto.SyncMessage.CallEvent.Direction.INCOMING
+  ) {
     direction = CallDirection.Incoming;
   } else if (
-    callEvent.direction === Proto.SyncMessage.CallEvent.Direction.OUTGOING
+    callEventProto.direction === Proto.SyncMessage.CallEvent.Direction.OUTGOING
   ) {
     direction = CallDirection.Outgoing;
   } else {
@@ -271,43 +272,29 @@ export function getCallEventForProto(
     timestamp,
     event,
     eventSource,
+    eventTimestamp,
   });
 }
 
-const callLogEventFromProto: Partial<
-  Record<Proto.SyncMessage.CallLogEvent.Type, CallLogEvent>
-> = {
-  [Proto.SyncMessage.CallLogEvent.Type.CLEAR]: CallLogEvent.Clear,
-  [Proto.SyncMessage.CallLogEvent.Type.MARKED_AS_READ]:
-    CallLogEvent.MarkedAsRead,
-  [Proto.SyncMessage.CallLogEvent.Type.MARKED_AS_READ_IN_CONVERSATION]:
-    CallLogEvent.MarkedAsReadInConversation,
-};
-
 export function getCallLogEventForProto(
-  callLogEventProto: Proto.SyncMessage.ICallLogEvent
+  callLogEventProto: Proto.SyncMessage.CallLogEvent,
+  eventTimestamp: number
 ): CallLogEventDetails {
   // CallLogEvent peerId is ambiguous whether it's a conversationId (direct, or groupId)
   // or roomId so handle both cases
-  const { peerId: peerIdBytes } = callLogEventProto;
-  const callLogEvent = parsePartial(callLogEventNormalizeSchema, {
-    ...callLogEventProto,
+  const {
+    conversationId: peerIdBytes,
+    timestamp: targetTimestamp,
+    ...rest
+  } = callLogEventProto;
+
+  return parseLoose(callLogEventNormalizeSchema, {
+    ...rest,
+    targetTimestamp,
     peerIdAsConversationId: peerIdBytes,
     peerIdAsRoomId: peerIdBytes,
+    eventTimestamp,
   });
-
-  const type = callLogEventFromProto[callLogEvent.type];
-  if (type == null) {
-    throw new TypeError(`Unknown call log event ${callLogEvent.type}`);
-  }
-
-  return {
-    type,
-    timestamp: callLogEvent.timestamp,
-    peerIdAsConversationId: callLogEvent.peerIdAsConversationId ?? null,
-    peerIdAsRoomId: callLogEvent.peerIdAsRoomId ?? null,
-    callId: callLogEvent.callId ?? null,
-  };
 }
 
 const directionToProto = {
@@ -352,37 +339,41 @@ function shouldSyncStatus(callStatus: CallStatus) {
 // For outgoing sync messages. peerId contains direct or group conversationId or
 // call link peerId. Locally conversationId is Base64 encoded but roomIds
 // are hex encoded.
-export function getBytesForPeerId(callHistory: CallHistoryDetails): Uint8Array {
-  let peerId =
-    callHistory.mode === CallMode.Adhoc
-      ? Bytes.fromHex(callHistory.peerId)
-      : uuidToBytes(callHistory.peerId);
-  if (peerId.length === 0) {
-    peerId = Bytes.fromBase64(callHistory.peerId);
+export function getBytesForPeerId(
+  callHistory: CallHistoryDetails
+): Uint8Array<ArrayBuffer> {
+  if (callHistory.mode === CallMode.Adhoc) {
+    return Bytes.fromHex(callHistory.peerId);
   }
-  return peerId;
+  if (callHistory.mode === CallMode.Group) {
+    return Bytes.fromBase64(callHistory.peerId);
+  }
+  if (callHistory.mode === CallMode.Direct) {
+    return uuidToBytes(callHistory.peerId);
+  }
+  throw missingCaseError(callHistory.mode);
 }
 
 export function getCallIdForProto(
   callHistory: CallHistoryDetails
-): Long | undefined {
+): bigint | null {
   try {
-    return Long.fromString(callHistory.callId);
-  } catch (error) {
+    return BigInt(callHistory.callId);
+  } catch {
     // When CallHistory is a placeholder record for call links, then the history item's
     // callId is invalid. We will ignore it and only send the timestamp.
     if (callHistory.mode === CallMode.Adhoc) {
-      return undefined;
+      return null;
     }
 
     // For other calls, we expect a valid callId.
-    throw error;
+    throw new Error(`Invalid callId: ${callHistory.callId}`);
   }
 }
 
 export function getProtoForCallHistory(
   callHistory: CallHistoryDetails
-): Proto.SyncMessage.ICallEvent | null {
+): Proto.SyncMessage.CallEvent.Params {
   const event = statusToProto[callHistory.status];
 
   strictAssert(
@@ -392,14 +383,14 @@ export function getProtoForCallHistory(
     )}`
   );
 
-  return new Proto.SyncMessage.CallEvent({
-    peerId: getBytesForPeerId(callHistory),
+  return {
+    conversationId: getBytesForPeerId(callHistory),
     callId: getCallIdForProto(callHistory),
     type: typeToProto[callHistory.type],
     direction: directionToProto[callHistory.direction],
     event,
-    timestamp: Long.fromNumber(callHistory.timestamp),
-  });
+    timestamp: BigInt(callHistory.timestamp),
+  };
 }
 
 // Local Events
@@ -430,7 +421,7 @@ const endedReasonToEvent: Record<CallEndedReason, LocalCallEvent> = {
   [CallEndedReason.UnexpectedReason]: LocalCallEvent.Missed,
 };
 
-export function getLocalCallEventFromCallEndedReason(
+function getLocalCallEventFromCallEndedReason(
   callEndedReason: CallEndedReason
 ): LocalCallEvent {
   log.info('getLocalCallEventFromCallEndedReason', callEndedReason);
@@ -530,70 +521,73 @@ function getCallDirectionFromRingerId(
 // Call Details
 // ------------
 
-export function getCallDetailsFromDirectCall(
-  peerId: AciString | string,
-  call: Call
-): CallDetails {
-  const ringerId = call.isIncoming ? call.remoteUserId : null;
+export function getCallDetailsFromDirectCall(params: {
+  peerId: AciString | string;
+  call: Call;
+  eventTimestamp: number;
+}): CallDetails {
+  const ringerId = params.call.isIncoming ? params.call.remoteUserId : null;
   return parseStrict(callDetailsSchema, {
-    callId: Long.fromValue(call.callId).toString(),
-    peerId,
+    callId: params.call.callId.toString(),
+    peerId: params.peerId,
     ringerId,
     startedById: ringerId,
     mode: CallMode.Direct,
-    type: call.isVideoCall ? CallType.Video : CallType.Audio,
-    direction: call.isIncoming
+    type: params.call.isVideoCall ? CallType.Video : CallType.Audio,
+    direction: params.call.isIncoming
       ? CallDirection.Incoming
       : CallDirection.Outgoing,
-    timestamp: Date.now(),
+    timestamp: params.eventTimestamp,
     endedTimestamp: null,
   });
 }
 
-export function getCallDetailsFromEndedDirectCall(
-  callId: string,
-  peerId: AciString | string,
-  ringerId: AciString | string,
-  wasVideoCall: boolean,
-  timestamp: number
-): CallDetails {
+export function getCallDetailsFromEndedDirectCall(params: {
+  callId: bigint;
+  peerId: AciString | string;
+  ringerId: AciString | string;
+  wasVideoCall: boolean;
+  eventTimestamp: number;
+}): CallDetails {
   return parseStrict(callDetailsSchema, {
-    callId,
-    peerId,
-    ringerId,
-    startedById: ringerId,
+    callId: params.callId.toString(),
+    peerId: params.peerId,
+    ringerId: params.ringerId,
+    startedById: params.ringerId,
     mode: CallMode.Direct,
-    type: wasVideoCall ? CallType.Video : CallType.Audio,
-    direction: getCallDirectionFromRingerId(ringerId),
-    timestamp,
+    type: params.wasVideoCall ? CallType.Video : CallType.Audio,
+    direction: getCallDirectionFromRingerId(params.ringerId),
+    timestamp: params.eventTimestamp,
     endedTimestamp: null,
   });
 }
 
-export function getCallDetailsFromGroupCallMeta(
-  peerId: AciString | string,
-  groupCallMeta: GroupCallMeta
-): CallDetails {
+export function getCallDetailsFromGroupCallMeta(params: {
+  peerId: AciString | string;
+  groupCallMeta: GroupCallMeta;
+  eventTimestamp: number;
+}): CallDetails {
   return parseStrict(callDetailsSchema, {
-    callId: groupCallMeta.callId,
-    peerId,
-    ringerId: groupCallMeta.ringerId,
-    startedById: groupCallMeta.ringerId,
+    callId: params.groupCallMeta.callId,
+    peerId: params.peerId,
+    ringerId: params.groupCallMeta.ringerId,
+    startedById: params.groupCallMeta.ringerId,
     mode: CallMode.Group,
     type: CallType.Group,
-    direction: getCallDirectionFromRingerId(groupCallMeta.ringerId),
-    timestamp: Date.now(),
+    direction: getCallDirectionFromRingerId(params.groupCallMeta.ringerId),
+    timestamp: params.eventTimestamp,
     endedTimestamp: null,
   });
 }
 
-export function getCallDetailsForAdhocCall(
-  peerId: AciString | string,
-  callId: string
-): CallDetails {
+export function getCallDetailsForAdhocCall(params: {
+  peerId: AciString | string;
+  callId: string;
+  eventTimestamp: number;
+}): CallDetails {
   return parseStrict(callDetailsSchema, {
-    callId,
-    peerId,
+    callId: params.callId,
+    peerId: params.peerId,
     ringerId: null,
     startedById: null,
     mode: CallMode.Adhoc,
@@ -601,7 +595,7 @@ export function getCallDetailsForAdhocCall(
     // Direction is only outgoing when your action causes ringing for others.
     // As Adhoc calls do not support ringing, this is always incoming for now
     direction: CallDirection.Incoming,
-    timestamp: Date.now(),
+    timestamp: params.eventTimestamp,
     endedTimestamp: null,
   });
 }
@@ -609,22 +603,24 @@ export function getCallDetailsForAdhocCall(
 // Call Event Details
 // ------------------
 
-export function getCallEventDetails(
-  callDetails: CallDetails,
-  event: LocalCallEvent,
-  eventSource: string
-): CallEventDetails {
+export function getCallEventDetails(params: {
+  callDetails: CallDetails;
+  event: LocalCallEvent;
+  eventSource: string;
+  eventTimestamp: number;
+}): CallEventDetails {
   return parseStrict(callEventDetailsSchema, {
-    ...callDetails,
-    event,
-    eventSource,
+    ...params.callDetails,
+    event: params.event,
+    eventSource: params.eventSource,
+    eventTimestamp: params.eventTimestamp,
   });
 }
 
 // transitions
 // -----------
 
-export function transitionCallHistory(
+function transitionCallHistory(
   callHistory: CallHistoryDetails | null,
   callEvent: CallEventDetails
 ): CallHistoryDetails {
@@ -1001,11 +997,17 @@ function transitionAdhocCallStatus(
 // actions
 // -------
 
-async function updateLocalCallHistory(
-  callEvent: CallEventDetails,
-  receivedAtCounter: number | null,
-  receivedAtMS: number | null
-): Promise<CallHistoryDetails | null> {
+async function updateLocalCallHistory({
+  callEvent,
+  receivedAtCounter,
+  receivedAtMS,
+  serverGuid,
+}: {
+  callEvent: CallEventDetails;
+  receivedAtCounter: number | null;
+  receivedAtMS: number | null;
+  serverGuid: string | null;
+}): Promise<CallHistoryDetails | null> {
   const conversation = window.ConversationController.get(callEvent.peerId);
   strictAssert(
     conversation != null,
@@ -1051,6 +1053,8 @@ async function updateLocalCallHistory(
         conversation,
         receivedAtCounter,
         receivedAtMS,
+        serverGuid,
+        eventTimestamp: callEvent.eventTimestamp,
       });
       return updatedCallHistory;
     }
@@ -1068,7 +1072,7 @@ export async function updateAdhocCallHistory(
   drop(updateRemoteCallHistory(callHistory));
 }
 
-export async function updateLocalAdhocCallHistory(
+async function updateLocalAdhocCallHistory(
   callEvent: CallEventDetails
 ): Promise<CallHistoryDetails | null> {
   log.info(
@@ -1156,11 +1160,15 @@ async function saveCallHistory({
   conversation,
   receivedAtCounter,
   receivedAtMS,
+  serverGuid,
+  eventTimestamp,
 }: {
   callHistory: CallHistoryDetails;
   conversation: ConversationModel;
   receivedAtCounter: number | null;
   receivedAtMS: number | null;
+  serverGuid: string | null;
+  eventTimestamp: number | null;
 }): Promise<CallHistoryDetails> {
   log.info(
     'saveCallHistory: Saving call history:',
@@ -1206,21 +1214,29 @@ async function saveCallHistory({
     return callHistory;
   }
 
-  let unseen = false;
-  if (callHistory.mode === CallMode.Direct) {
-    unseen =
-      callHistory.direction === CallDirection.Incoming &&
-      (callHistory.status === DirectCallStatus.Missed ||
-        callHistory.status === DirectCallStatus.Pending);
-  } else if (callHistory.mode === CallMode.Group) {
-    unseen =
-      callHistory.direction === CallDirection.Incoming &&
-      (callHistory.status === GroupCallStatus.Ringing ||
-        callHistory.status === GroupCallStatus.GenericGroupCall ||
-        callHistory.status === GroupCallStatus.Missed);
+  let seenStatus: SeenStatus;
+
+  const isCallCurrentlyActive = calling.isCallActive(conversation.id);
+
+  const isUnseenDirectCall =
+    callHistory.mode === CallMode.Direct &&
+    callHistory.direction === CallDirection.Incoming &&
+    (callHistory.status === DirectCallStatus.Missed ||
+      callHistory.status === DirectCallStatus.Pending);
+
+  const isUnseenGroupCall =
+    callHistory.mode === CallMode.Group &&
+    callHistory.direction === CallDirection.Incoming &&
+    (callHistory.status === GroupCallStatus.Ringing ||
+      callHistory.status === GroupCallStatus.GenericGroupCall ||
+      callHistory.status === GroupCallStatus.Missed);
+
+  if (isUnseenDirectCall || isUnseenGroupCall) {
+    seenStatus = SeenStatus.Unseen;
+  } else {
+    seenStatus = SeenStatus.Seen;
   }
 
-  let seenStatus = unseen ? SeenStatus.Unseen : SeenStatus.NotApplicable;
   if (prevMessage?.seenStatus != null) {
     seenStatus = maxSeenStatus(seenStatus, prevMessage.seenStatus);
   }
@@ -1229,6 +1245,34 @@ async function saveCallHistory({
     prevMessage?.received_at ?? receivedAtCounter ?? incrementMessageCounter();
 
   const { id: newId } = generateMessageId(counter);
+
+  const isDisappearingCallsEnabled = isFeaturedEnabledNoRedux({
+    betaKey: 'desktop.disappearingCalls.beta',
+    prodKey: 'desktop.disappearingCalls.prod',
+  });
+
+  let expireTimer: DurationInSeconds | undefined;
+  if (isDisappearingCallsEnabled) {
+    if (prevMessage != null) {
+      expireTimer = prevMessage.expireTimer;
+    } else {
+      expireTimer = conversation.get('expireTimer');
+    }
+  }
+
+  let expirationStartTimestamp: number | null | undefined =
+    prevMessage?.expirationStartTimestamp;
+
+  if (
+    expireTimer != null &&
+    seenStatus === SeenStatus.Seen &&
+    !isCallCurrentlyActive
+  ) {
+    expirationStartTimestamp ??=
+      eventTimestamp != null
+        ? Math.min(eventTimestamp, Date.now())
+        : Date.now();
+  }
 
   const message = new MessageModel({
     id: prevMessage?.id ?? newId,
@@ -1242,6 +1286,9 @@ async function saveCallHistory({
     readStatus: ReadStatus.Read,
     seenStatus,
     callId: callHistory.callId,
+    serverGuid: prevMessage?.serverGuid ?? (serverGuid || undefined),
+    expireTimer,
+    expirationStartTimestamp,
   });
 
   const id = await window.MessageCache.saveMessage(message, {
@@ -1281,7 +1328,9 @@ async function saveCallHistory({
     await DataWriter.updateConversation(conversation.attributes);
   }
 
-  window.reduxActions.callHistory.updateCallHistoryUnreadCount();
+  window.reduxActions.callHistory.updateCallHistoryUnreadCount([
+    conversation.id,
+  ]);
 
   return callHistory;
 }
@@ -1296,6 +1345,12 @@ async function updateRemoteCallHistory(
     );
     return;
   }
+  if (!window.ConversationController.doWeHaveOtherDevices()) {
+    log.info(
+      'updateRemoteCallHistory: We have no other devices; not sending sync'
+    );
+    return;
+  }
 
   log.info(
     'updateRemoteCallHistory: syncing call history:',
@@ -1304,19 +1359,24 @@ async function updateRemoteCallHistory(
 
   try {
     const ourAci = itemStorage.user.getCheckedAci();
-    const syncMessage = MessageSender.createSyncMessage();
-
-    syncMessage.callEvent = getProtoForCallHistory(callHistory);
-
-    const contentMessage = new Proto.Content();
-    contentMessage.syncMessage = syncMessage;
+    const syncMessage = MessageSender.padSyncMessage({
+      content: {
+        callEvent: getProtoForCallHistory(callHistory),
+      },
+    });
 
     await singleProtoJobQueue.add({
       contentHint: ContentHint.Resendable,
       serviceId: ourAci,
       isSyncMessage: true,
       protoBase64: Bytes.toBase64(
-        Proto.Content.encode(contentMessage).finish()
+        Proto.Content.encode({
+          content: {
+            syncMessage,
+          },
+          senderKeyDistributionMessage: null,
+          pniSignatureMessage: null,
+        })
       ),
       type: 'callEventSync',
       urgent: false,
@@ -1335,22 +1395,34 @@ export async function updateCallHistoryFromRemoteEvent(
   receivedAtMS: number
 ): Promise<void> {
   if (callEvent.mode === CallMode.Direct || callEvent.mode === CallMode.Group) {
-    await updateLocalCallHistory(callEvent, receivedAtCounter, receivedAtMS);
+    await updateLocalCallHistory({
+      callEvent,
+      receivedAtCounter,
+      receivedAtMS,
+      serverGuid: null,
+    });
   } else if (callEvent.mode === CallMode.Adhoc) {
     await updateLocalAdhocCallHistory(callEvent);
   }
 }
 
-export async function updateCallHistoryFromLocalEvent(
-  callEvent: CallEventDetails,
-  receivedAtCounter: number | null,
-  receivedAtMS: number | null
-): Promise<void> {
-  const updatedCallHistory = await updateLocalCallHistory(
+export async function updateCallHistoryFromLocalEvent({
+  callEvent,
+  receivedAtCounter,
+  receivedAtMS,
+  serverGuid,
+}: {
+  callEvent: CallEventDetails;
+  receivedAtCounter?: number | null;
+  receivedAtMS?: number | null;
+  serverGuid?: string | null;
+}): Promise<void> {
+  const updatedCallHistory = await updateLocalCallHistory({
     callEvent,
-    receivedAtCounter,
-    receivedAtMS
-  );
+    receivedAtCounter: receivedAtCounter ?? null,
+    receivedAtMS: receivedAtMS ?? null,
+    serverGuid: serverGuid ?? null,
+  });
   if (updatedCallHistory == null) {
     return;
   }
@@ -1389,10 +1461,13 @@ export async function clearCallHistoryDataAndSync(
       storageServiceUploadJob({ reason: 'clearCallHistoryDataAndSync' });
     }
     updateDeletedMessages(messageIds);
-    log.info('clearCallHistory: Queueing sync message');
-    await singleProtoJobQueue.add(
-      MessageSender.getClearCallHistoryMessage(latestCall)
-    );
+
+    if (window.ConversationController.doWeHaveOtherDevices()) {
+      log.info('clearCallHistory: Queueing sync message');
+      await singleProtoJobQueue.add(
+        MessageSender.getClearCallHistoryMessage(latestCall)
+      );
+    }
 
     const adminCallLinks = await DataReader.getAllAdminCallLinks();
     const callLinkCount = adminCallLinks.length;
@@ -1403,9 +1478,9 @@ export async function clearCallHistoryDataAndSync(
       for (const callLink of adminCallLinks) {
         try {
           // This throws if call link is active or network is unavailable.
-          // eslint-disable-next-line no-await-in-loop
+          // oxlint-disable-next-line no-await-in-loop
           await calling.deleteCallLink(callLink);
-          // eslint-disable-next-line no-await-in-loop
+          // oxlint-disable-next-line no-await-in-loop
           await DataWriter.deleteCallHistoryByRoomId(callLink.roomId);
           // Wait for storage service sync before finalizing delete.
           drop(
@@ -1444,45 +1519,67 @@ export async function markAllCallHistoryReadAndSync(
     log.info(
       `markAllCallHistoryReadAndSync: Marking call history read before (${latestCall.callId}, ${latestCall.timestamp})`
     );
+    const readAt = Date.now();
+    const activeCallIds = calling.getActiveCallIds();
     let count: number;
     if (inConversation) {
-      count = await DataWriter.markAllCallHistoryReadInConversation(latestCall);
+      count = await DataWriter.markAllCallHistoryReadInConversation(
+        latestCall,
+        readAt,
+        activeCallIds
+      );
     } else {
-      count = await DataWriter.markAllCallHistoryRead(latestCall);
+      count = await DataWriter.markAllCallHistoryRead(
+        latestCall,
+        readAt,
+        activeCallIds
+      );
     }
 
     log.info(
       `markAllCallHistoryReadAndSync: Marked ${count} call history messages read`
     );
 
+    if (count > 0) {
+      updateExpiringMessagesService();
+    }
+
     const ourAci = itemStorage.user.getCheckedAci();
 
-    const callLogEvent = new Proto.SyncMessage.CallLogEvent({
+    const callLogEvent: Proto.SyncMessage.CallLogEvent.Params = {
       type: inConversation
         ? Proto.SyncMessage.CallLogEvent.Type.MARKED_AS_READ_IN_CONVERSATION
         : Proto.SyncMessage.CallLogEvent.Type.MARKED_AS_READ,
-      timestamp: Long.fromNumber(latestCall.timestamp),
-      peerId: getBytesForPeerId(latestCall),
+      timestamp: BigInt(latestCall.timestamp),
+      conversationId: getBytesForPeerId(latestCall),
       callId: getCallIdForProto(latestCall),
+    };
+
+    const syncMessage = MessageSender.padSyncMessage({
+      content: {
+        callLogEvent,
+      },
     });
 
-    const syncMessage = MessageSender.createSyncMessage();
-    syncMessage.callLogEvent = callLogEvent;
-
-    const contentMessage = new Proto.Content();
-    contentMessage.syncMessage = syncMessage;
-
-    log.info('markAllCallHistoryReadAndSync: Queueing sync message');
-    await singleProtoJobQueue.add({
-      contentHint: ContentHint.Resendable,
-      serviceId: ourAci,
-      isSyncMessage: true,
-      protoBase64: Bytes.toBase64(
-        Proto.Content.encode(contentMessage).finish()
-      ),
-      type: 'callLogEventSync',
-      urgent: false,
-    });
+    if (window.ConversationController.doWeHaveOtherDevices()) {
+      log.info('markAllCallHistoryReadAndSync: Queueing sync message');
+      await singleProtoJobQueue.add({
+        contentHint: ContentHint.Resendable,
+        serviceId: ourAci,
+        isSyncMessage: true,
+        protoBase64: Bytes.toBase64(
+          Proto.Content.encode({
+            content: {
+              syncMessage,
+            },
+            senderKeyDistributionMessage: null,
+            pniSignatureMessage: null,
+          })
+        ),
+        type: 'callLogEventSync',
+        urgent: false,
+      });
+    }
   } catch (error) {
     log.error(
       'markAllCallHistoryReadAndSync: Failed to mark call history read',
@@ -1537,6 +1634,8 @@ export async function updateLocalGroupCallHistoryTimestamp(
         conversation,
         receivedAtCounter: null,
         receivedAtMS: null,
+        serverGuid: null,
+        eventTimestamp: null,
       });
 
       return updatedCallHistory;

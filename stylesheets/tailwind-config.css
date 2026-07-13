@@ -6,6 +6,7 @@
 @import 'tailwindcss' source(none);
 @import './tailwind-plugins/animate-general.css';
 @import './tailwind-plugins/animate-enter-exit.css';
+@import './tailwind-plugins/container-scroll-state.css';
 @import './tailwind-plugins/scrollbar.css';
 @import './tailwind-plugins/superellipse.css';
 
@@ -21,10 +22,7 @@
  * ----------------------------------------------------------------------------
  */
 @custom-variant dark (&:where(.dark-theme, .dark-theme *));
-
-@custom-variant hovered (&:where(:hover:not(:disabled)));
-@custom-variant pressed (&:where(:active:not(:disabled)));
-@custom-variant focused (:where(.keyboard-mode) &:where(:focus));
+@custom-variant keyboard-mode (&:where(.keyboard-mode *));
 
 /**
  * Color
@@ -89,9 +87,11 @@
   /* Colors/Message Fill */
   --color-message-fill-incoming-primary:   light-dark(/*   */ #EAEAEA /*  */, /*   */ #3A3A3A /*  */);
   --color-message-fill-incoming-secondary: light-dark(--alpha(#FFFFFF / 80%), --alpha(#FFFFFF / 20%));
+  --color-message-fill-incoming-secondary-pressed: light-dark(--alpha(#FFFFFF / 72%), --alpha(#FFFFFF / 28%));
   --color-message-fill-incoming-tertiary:  light-dark(--alpha(#FFFFFF / 60%), --alpha(#FFFFFF / 12%));
   --color-message-fill-outgoing-primary:   light-dark(/*   */ #2267F5 /*  */, /*   */ #2267F5 /*  */);
-  --color-message-fill-outgoing-secondary: light-dark(--alpha(#FFFFFF / 60%), --alpha(#FFFFFF / 60%));
+  --color-message-fill-outgoing-secondary: light-dark(--alpha(#FFFFFF / 20%), --alpha(#FFFFFF / 20%));
+  --color-message-fill-outgoing-secondary-pressed: light-dark(--alpha(#FFFFFF / 12%), --alpha(#FFFFFF / 28%));
   --color-message-fill-outgoing-tertiary:  light-dark(--alpha(#FFFFFF / 20%), --alpha(#FFFFFF / 20%));
 
   /* Colors/Color Fill */
@@ -130,6 +130,11 @@
    * add them here.
    */
   --color-legacy-conversation-header-bg: light-dark(#fff, #121212);
+  --color-legacy-signal-conversation-bg: light-dark(#F6F7FF, #2F3240);
+  --color-legacy-official-chat-badge-bg: light-dark(--alpha(#4655FF / 12%), --alpha(#4952F8 / 40%));
+  --color-legacy-official-chat-badge-text: light-dark(#030FFC, #C2C5FE);
+  --color-legacy-signal-chat-message-bg: light-dark(#8889B4, #444664);
+  --color-legacy-warning-badge: light-dark(#C84118, #EB977D);
 }
 
 @layer theme {
@@ -190,9 +195,11 @@
       /* Colors/Message Fill */
       --color-message-fill-incoming-primary:   light-dark(/*   */ #E0E0E0 /*  */, /*   */ #424242 /*  */);
       --color-message-fill-incoming-secondary: light-dark(--alpha(#FFFFFF / 90%), --alpha(#FFFFFF / 30%));
+      --color-message-fill-incoming-secondary-pressed: light-dark(--alpha(#FFFFFF / 82%), --alpha(#FFFFFF / 38%));
       --color-message-fill-incoming-tertiary:  light-dark(--alpha(#FFFFFF / 70%), --alpha(#FFFFFF / 22%));
       --color-message-fill-outgoing-primary:   light-dark(/*   */ #0842B9 /*  */, /*   */ #0842B9 /*  */);
-      --color-message-fill-outgoing-secondary: light-dark(--alpha(#FFFFFF / 70%), --alpha(#FFFFFF / 70%));
+      --color-message-fill-outgoing-secondary: light-dark(--alpha(#FFFFFF / 30%), --alpha(#FFFFFF / 30%));
+      --color-message-fill-outgoing-secondary-pressed: light-dark(--alpha(#FFFFFF / 22%), --alpha(#FFFFFF / 38%));
       --color-message-fill-outgoing-tertiary:  light-dark(--alpha(#FFFFFF / 30%), --alpha(#FFFFFF / 30%));
 
       /* Colors/Color Fill */
@@ -232,8 +239,10 @@
 @theme {
   --font-*: initial; /* reset defaults */
   /* Note: --font-sans also has language */
-  --font-sans: Inter, 'Source Sans Pro', 'Source Han Sans', -apple-system,
-    system-ui, 'Segoe UI', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial,
+  --font-sans: Inter, 'Source Sans Pro', 'Source Han Sans',
+    'Signal Emoji Large', 'Signal Emoji Small',
+    -apple-system, system-ui, 'Segoe UI', 'Noto Sans', 'Helvetica Neue',
+    Helvetica, Arial,
     sans-serif;
   /* Note: This font-family is checked for in matchMonospace, to support paste scenarios */
   --font-mono: 'SF Mono', SFMono-Regular, ui-monospace, 'DejaVu Sans Mono',
@@ -241,30 +250,30 @@
   --font-symbols: 'SignalSymbols';
 }
 
-@font-face {
-  font-family: 'SignalSymbols';
-  font-style: normal;
-  font-weight: 300 400 700;
-  font-display: block;
-  src: url('../fonts/signal-symbols/SignalSymbolsVariable.woff2');
-}
-
 @layer base {
   /* Japanese */
   :lang(ja) {
-    --font-sans: Inter, 'SF Pro', 'SF Pro JP', 'BIZ UDGothic',
+    --font-sans: Inter,
+      'SF Pro', 'SF Pro JP', 'BIZ UDGothic',
       'Hiragino Kaku Gothic Pro', 'ヒラギノ角ゴ Pro W3', メイリオ, Meiryo,
-      'ＭＳ Ｐゴシック', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      'ＭＳ Ｐゴシック',
+      'Signal Emoji Large', 'Signal Emoji Small',
+      'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
   /* Farsi (Persian) */
   :lang(fa) {
-    --font-sans: 'Vazirmatn', -apple-system, system-ui, BlinkMacSystemFont,
-      'Segoe UI', Tahoma, 'Noto Sans Arabic', Helvetica, Arial, sans-serif;
+    --font-sans: 'Vazirmatn', Inter, 'Noto Sans Arabic',
+      'Signal Emoji Large', 'Signal Emoji Small',
+      -apple-system, system-ui, BlinkMacSystemFont,
+      'Segoe UI', Tahoma, Helvetica, Arial, sans-serif;
   }
   /* Urdu */
   :lang(ur) {
     --font-sans: 'Noto Nastaliq Urdu', Gulzar, 'Jameel Noori Nastaleeq',
-      'Faiz Lahori Nastaleeq', 'Urdu Typesetting', Helvetica, Arial, sans-serif;
+      'Faiz Lahori Nastaleeq', 'Urdu Typesetting',
+      Helvetica, Arial,
+      'Signal Emoji Large', 'Signal Emoji Small',
+      sans-serif;
   }
 }
 
@@ -506,4 +515,28 @@
 
 @utility legacy-z-index-* {
   z-index: --value(--legacy-z-index-*);
+}
+
+/**
+ * Focus Rings
+ * ----------------------------------------------------------------------------
+ */
+
+@property --axo-outline-focus-ring-color {
+  syntax: '*';
+  inherits: false;
+}
+
+@utility outline-focus-ring {
+  outline-style: solid;
+  outline-color: var(--axo-outline-focus-ring-color, var(--color-border-focused));
+  outline-width: 2.5px;
+}
+
+@utility outline-focus-ring-inset {
+  outline-offset: -2.5px;
+}
+
+@utility outline-focus-ring-error {
+  --axo-outline-focus-ring-color: var(--color-border-error);
 }

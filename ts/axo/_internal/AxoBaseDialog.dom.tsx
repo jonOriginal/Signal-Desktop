@@ -3,23 +3,25 @@
 
 import { useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { tw } from '../tw.dom.js';
+import { tw } from '../tw.dom.tsx';
 
 export namespace AxoBaseDialog {
   /**
-   * AxoBaseDialog: Root
-   * -------------------
+   * <AxoBaseDialog.Root>
+   * --------------------------------------------------------------------------
    */
 
   export type RootProps = Readonly<{
+    /** Controlled open state. Must be used with `onOpenChange`. */
     open?: boolean;
+    /** Called when the open state changes. */
     onOpenChange?: (open: boolean) => void;
     children: ReactNode;
   }>;
 
   /**
-   * AxoBaseDialog: Trigger
-   * ----------------------
+   * <AxoBaseDialog.Trigger>
+   * --------------------------------------------------------------------------
    */
 
   export type TriggerProps = Readonly<{
@@ -27,37 +29,52 @@ export namespace AxoBaseDialog {
   }>;
 
   /**
-   * AxoBaseDialog: Overlay
-   * ----------------------
+   * <AxoBaseDialog.Overlay>
+   * --------------------------------------------------------------------------
    */
 
   export const overlayStyles = tw(
     'legacy-z-index-modal-host',
     'absolute inset-0 flex items-center-safe justify-center-safe bg-background-overlay p-4',
     // Allow the entire overlay to be scrolled in case the window is extremely small
-    'overflow-auto scrollbar-width-none',
+    'scrollbar-width-none overflow-auto',
     'data-[state=closed]:animate-exit data-[state=open]:animate-enter',
     'animate-opacity-0',
     'forced-colors:bg-[Canvas]'
   );
 
   /**
-   * AxoBaseDialog: Content
-   * ----------------------
+   * <AxoBaseDialog.Content>
+   * --------------------------------------------------------------------------
    */
 
   export const contentStyles = tw(
     'relative',
-    'max-h-full min-h-fit max-w-full min-w-fit',
+    'max-h-full min-h-fit',
     'curved-3xl bg-elevated-background-primary shadow-elevation-3 select-none',
-    'outline-border-focused not-forced-colors:outline-0 not-forced-colors:focused:outline-[2.5px]',
+    'text-label-primary',
+    'not-forced-colors:outline-none not-forced-colors:keyboard-mode:focus:outline-focus-ring',
     'data-[state=closed]:animate-exit data-[state=open]:animate-enter',
     'animate-scale-98 animate-translate-y-1',
     'forced-colors:border forced-colors:border-[ButtonBorder] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]'
   );
 
+  /**
+   * useContentEscapeBehavior()
+   * --------------------------------------------------------------------------
+   */
+
+  /**
+   * How dangerous the cancel action is considered.
+   * - `cancel-is-noop`: Canceling is safe — pressing Escape or clicking outside closes the dialog.
+   * - `cancel-is-destructive`: Canceling would lose user state — pressing Escape or clicking outside is disabled.
+   */
   export type ContentEscape = 'cancel-is-noop' | 'cancel-is-destructive';
 
+  /**
+   * Returns an escape-key handler for `onEscapeKeyDown`.
+   * Prevents default when `escape` is `cancel-is-destructive`.
+   */
   export function useContentEscapeBehavior(
     escape: ContentEscape
   ): (event: Event) => void {

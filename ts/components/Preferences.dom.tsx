@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { AudioDevice } from '@signalapp/ringrtc';
-import React, {
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -13,95 +13,96 @@ import React, {
 import lodash from 'lodash';
 import classNames from 'classnames';
 import * as LocaleMatcher from '@formatjs/intl-localematcher';
-import type { MutableRefObject, ReactNode } from 'react';
+import type { MutableRefObject, ReactNode, JSX } from 'react';
 import type { RowType } from '@signalapp/sqlcipher';
 import type { BackupLevel } from '@signalapp/libsignal-client/zkgroup.js';
-import { ChatColorPicker } from './ChatColorPicker.dom.js';
-import { Checkbox } from './Checkbox.dom.js';
-import { WidthBreakpoint } from './_util.std.js';
-import { ConfirmationDialog } from './ConfirmationDialog.dom.js';
-import { DisappearingTimeDialog } from './DisappearingTimeDialog.dom.js';
-import { PhoneNumberDiscoverability } from '../util/phoneNumberDiscoverability.std.js';
-import { PhoneNumberSharingMode } from '../types/PhoneNumberSharingMode.std.js';
-import { KEY_TRANSPARENCY_URL } from '../types/support.std.js';
-import { Select } from './Select.dom.js';
-import { getCustomColorStyle } from '../util/getCustomColorStyle.dom.js';
+import { ChatColorPicker } from './ChatColorPicker.dom.tsx';
+import { Checkbox } from './Checkbox.dom.tsx';
+import { WidthBreakpoint } from './_util.std.ts';
+import { DisappearingTimeDialog } from './DisappearingTimeDialog.dom.tsx';
+import { PhoneNumberDiscoverability } from '../util/phoneNumberDiscoverability.std.ts';
+import { PhoneNumberSharingMode } from '../types/PhoneNumberSharingMode.std.ts';
+import { KEY_TRANSPARENCY_URL } from '../types/support.std.ts';
+import { Select } from './Select.dom.tsx';
+import { getCustomColorStyle } from '../util/getCustomColorStyle.dom.ts';
 import {
   DEFAULT_DURATIONS_IN_SECONDS,
   DEFAULT_DURATIONS_SET,
   format as formatExpirationTimer,
-} from '../util/expirationTimer.std.js';
-import { DurationInSeconds } from '../util/durations/index.std.js';
-import { focusableSelector } from '../util/focusableSelectors.std.js';
-import { Modal } from './Modal.dom.js';
-import { SearchInput } from './SearchInput.dom.js';
-import { removeDiacritics } from '../util/removeDiacritics.std.js';
-import { assertDev } from '../util/assert.std.js';
-import { I18n } from './I18n.dom.js';
-import { FunSkinTonesList } from './fun/FunSkinTones.dom.js';
-import { EMOJI_PARENT_KEY_CONSTANTS } from './fun/data/emojis.std.js';
+} from '../util/expirationTimer.std.ts';
+import { DurationInSeconds } from '../util/durations/index.std.ts';
+import { focusableSelector } from '../util/focusableSelectors.std.ts';
+import { Modal } from './Modal.dom.tsx';
+import { SearchInput } from './SearchInput.dom.tsx';
+import { removeDiacritics } from '../util/removeDiacritics.std.ts';
+import { assertDev } from '../util/assert.std.ts';
+import { I18n } from './I18n.dom.tsx';
+import { FunSkinTonesList } from './fun/FunSkinTones.dom.tsx';
 import {
   SettingsControl as Control,
   FlowingSettingsControl as FlowingControl,
   SettingsRadio,
   SettingsRow,
-} from './PreferencesUtil.dom.js';
-import { PreferencesBackups } from './PreferencesBackups.dom.js';
-import { PreferencesInternal } from './PreferencesInternal.dom.js';
-import { FunEmojiLocalizationProvider } from './fun/FunEmojiLocalizationProvider.dom.js';
-import { Avatar, AvatarSize } from './Avatar.dom.js';
-import { NavSidebar } from './NavSidebar.dom.js';
-import type { SettingsLocation } from '../types/Nav.std.js';
-import { SettingsPage, ProfileEditorPage } from '../types/Nav.std.js';
-import { tw } from '../axo/tw.dom.js';
-import { FullWidthButton } from './PreferencesNotificationProfiles.dom.js';
-import type { EmojiSkinTone } from './fun/data/emojis.std.js';
-import type { MediaDeviceSettings } from '../types/Calling.std.js';
-import type { ValidationResultType as BackupValidationResultType } from '../services/backups/index.preload.js';
+} from './PreferencesUtil.dom.tsx';
+import { PreferencesBackups } from './PreferencesBackups.dom.tsx';
+import { PreferencesInternal } from './PreferencesInternal.dom.tsx';
+import { Avatar, AvatarSize } from './Avatar.dom.tsx';
+import { NavSidebar } from './NavSidebar.dom.tsx';
+import type { SettingsLocation } from '../types/Nav.std.ts';
+import { SettingsPage, ProfileEditorPage } from '../types/Nav.std.ts';
+import { tw } from '../axo/tw.dom.tsx';
+import { FullWidthButton } from './PreferencesNotificationProfiles.dom.tsx';
+import type { MediaDeviceSettings } from '../types/Calling.std.ts';
+import type { ValidationResultType as BackupValidationResultType } from '../services/backups/index.preload.ts';
 import type {
   AutoDownloadAttachmentType,
   NotificationSettingType,
   SentMediaQualitySettingType,
   ZoomFactorType,
-} from '../types/Storage.d.ts';
-import type { ThemeSettingType } from '../types/StorageUIKeys.std.js';
-import type { AnyToast } from '../types/Toast.dom.js';
-import { ToastType } from '../types/Toast.dom.js';
-import type { ConversationType } from '../state/ducks/conversations.preload.js';
+  StorageAccessType,
+} from '../types/StorageKeys.std.ts';
+import type { ThemeSettingType } from '../util/theme.std.ts';
+import type { AnyToast } from '../types/Toast.dom.tsx';
+import { ToastType } from '../types/Toast.dom.tsx';
+import type { ConversationType } from '../state/ducks/conversations.preload.ts';
 import type {
   ConversationColorType,
   CustomColorType,
   DefaultConversationColorType,
-} from '../types/Colors.std.js';
+} from '../types/Colors.std.ts';
 import type {
   LocalizerType,
   SentMediaQualityType,
   ThemeType,
-} from '../types/Util.std.js';
+} from '../types/Util.std.ts';
 import type {
   BackupMediaDownloadStatusType,
   BackupsSubscriptionType,
   BackupStatusType,
-} from '../types/backups.node.js';
-import type { UnreadStats } from '../util/countUnreadStats.std.js';
-import type { BadgeType } from '../badges/types.std.js';
-import type { MessageCountBySchemaVersionType } from '../sql/Interface.std.js';
+} from '../types/backups.node.ts';
+import type { UnreadStats } from '../util/countUnreadStats.std.ts';
+import type { BadgeType } from '../badges/types.std.ts';
+import type { MessageCountBySchemaVersionType } from '../sql/Interface.std.ts';
 import type { MessageAttributesType } from '../model-types.d.ts';
-import { isBackupPage } from '../types/PreferencesBackupPage.std.js';
-import type { PreferencesBackupPage } from '../types/PreferencesBackupPage.std.js';
+import { isBackupPage } from '../types/PreferencesBackupPage.std.ts';
+import type { PreferencesBackupPage } from '../types/PreferencesBackupPage.std.ts';
 import type {
   PromptOSAuthReasonType,
   PromptOSAuthResultType,
-} from '../util/os/promptOSAuthMain.main.js';
-import type { DonationReceipt } from '../types/Donations.std.js';
-import type { ChatFolderId } from '../types/ChatFolder.std.js';
-import type { SmartPreferencesEditChatFolderPageProps } from '../state/smart/PreferencesEditChatFolderPage.preload.js';
-import type { SmartPreferencesChatFoldersPageProps } from '../state/smart/PreferencesChatFoldersPage.preload.js';
-import { AxoButton } from '../axo/AxoButton.dom.js';
-import type { ExternalProps as SmartNotificationProfilesProps } from '../state/smart/PreferencesNotificationProfiles.preload.js';
-import type { LocalBackupExportMetadata } from '../types/LocalExport.std.js';
-import { isDonationsPage } from './PreferencesDonations.dom.js';
-import type { VisibleRemoteMegaphoneType } from '../types/Megaphone.std.js';
+} from '../util/os/promptOSAuthMain.main.ts';
+import type { DonationReceipt } from '../types/Donations.std.ts';
+import type { ChatFolderId } from '../types/ChatFolder.std.ts';
+import type { SmartPreferencesEditChatFolderPageProps } from '../state/smart/PreferencesEditChatFolderPage.preload.tsx';
+import type { SmartPreferencesChatFoldersPageProps } from '../state/smart/PreferencesChatFoldersPage.preload.tsx';
+import { AxoButton } from '../axo/AxoButton.dom.tsx';
+import type { ExternalProps as SmartNotificationProfilesProps } from '../state/smart/PreferencesNotificationProfiles.preload.tsx';
+import type { LocalBackupExportMetadata } from '../types/LocalExport.std.ts';
+import { isDonationsPage } from './PreferencesDonations.dom.tsx';
+import type { VisibleRemoteMegaphoneType } from '../types/Megaphone.std.ts';
+import { TitlebarDragArea } from './TitlebarDragArea.dom.tsx';
+import type { PreferredBadgeSelectorType } from '../state/selectors/badges.preload.ts';
+import { Emoji } from '../axo/emoji.std.ts';
+import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
 
 const { isNumber, noop, partition } = lodash;
 
@@ -110,16 +111,15 @@ type SelectChangeHandlerType<T = string | number> = (value: T) => unknown;
 
 export type PropsDataType = {
   // Settings
-  accountEntropyPool: string | undefined;
+  backupKey: string | undefined;
+  backupKeyHash: string | undefined;
   autoDownloadAttachment: AutoDownloadAttachmentType;
-  backupFeatureEnabled: boolean;
   backupFreeMediaDays: number;
-  backupKeyViewed: boolean;
+  previouslyViewedBackupKeyHash: string | undefined;
   backupLocalBackupsEnabled: boolean;
   backupTier: BackupLevel | null;
   lastLocalBackup: LocalBackupExportMetadata | undefined;
   localBackupFolder: string | undefined;
-  chatFoldersFeatureEnabled: boolean;
   currentChatFoldersCount: number;
   cloudBackupStatus?: BackupStatusType;
   backupSubscriptionStatus: BackupsSubscriptionType;
@@ -127,11 +127,12 @@ export type PropsDataType = {
   pauseBackupMediaDownload: VoidFunction;
   cancelBackupMediaDownload: VoidFunction;
   resumeBackupMediaDownload: VoidFunction;
-  blockedCount: number;
+  blockedContacts: ReadonlyArray<ConversationType>;
+  blockedGroups: ReadonlyArray<ConversationType>;
   customColors: Record<string, CustomColorType>;
   defaultConversationColor: DefaultConversationColorType;
   deviceName?: string;
-  emojiSkinToneDefault: EmojiSkinTone;
+  emojiSkinToneDefault: Emoji.SkinTone;
   hasAnyCurrentCustomChatFolders: boolean;
   hasAudioNotifications?: boolean;
   hasAutoConvertEmoji: boolean;
@@ -149,10 +150,12 @@ export type PropsDataType = {
   hasMediaCameraPermissions: boolean | undefined;
   hasMediaPermissions: boolean | undefined;
   hasMessageAudio: boolean;
+  hasSealedSenderIndicators: boolean;
   hasMinimizeToAndStartInSystemTray: boolean | undefined;
   hasMinimizeToSystemTray: boolean | undefined;
   hasNotificationAttention: boolean;
   hasNotifications: boolean;
+  hasPreferContactAvatars: boolean;
   hasReadReceipts: boolean;
   hasRelayCalls?: boolean;
   hasSpellCheck: boolean | undefined;
@@ -163,6 +166,7 @@ export type PropsDataType = {
   settingsLocation: SettingsLocation;
   lastSyncTime?: number;
   notificationContent: NotificationSettingType;
+  osName: 'linux' | 'macos' | 'windows' | undefined;
   phoneNumber: string | undefined;
   selectedCamera?: string;
   selectedMicrophone?: AudioDevice;
@@ -191,6 +195,7 @@ export type PropsDataType = {
   shouldShowUpdateDialog: boolean;
   theme: ThemeType;
   notificationProfileCount: number;
+  weArePrimaryDevice: boolean;
 
   // Limited support features
   isAutoDownloadUpdatesSupported: boolean;
@@ -200,7 +205,6 @@ export type PropsDataType = {
   isHideMenuBarSupported: boolean;
   isKeyTransparencyAvailable: boolean;
   isNotificationAttentionSupported: boolean;
-  isPlaintextExportEnabled: boolean;
   isSyncSupported: boolean;
   isSystemTraySupported: boolean;
   isMinimizeToAndStartInSystemTraySupported: boolean;
@@ -212,6 +216,14 @@ export type PropsDataType = {
   >;
 
   donationReceipts: ReadonlyArray<DonationReceipt>;
+
+  // calling internal preferences
+  dredDuration: number | undefined;
+  isDirectVp9Enabled: boolean | undefined;
+  directMaxBitrate: number | undefined;
+  isGroupVp9Enabled: boolean | undefined;
+  groupMaxBitrate: number | undefined;
+  sfuUrl: string | undefined;
 } & Omit<MediaDeviceSettings, 'availableCameras'>;
 
 type PropsFunctionType = {
@@ -220,38 +232,44 @@ type PropsFunctionType = {
     contentsRef: MutableRefObject<HTMLDivElement | null>;
     settingsLocation: SettingsLocation;
     setSettingsLocation: (settingsLocation: SettingsLocation) => void;
-  }) => React.JSX.Element;
+  }) => JSX.Element;
   renderNotificationProfilesHome: (
     props: SmartNotificationProfilesProps
-  ) => React.JSX.Element;
+  ) => JSX.Element;
   renderNotificationProfilesCreateFlow: (
     props: SmartNotificationProfilesProps
-  ) => React.JSX.Element;
+  ) => JSX.Element;
 
   renderProfileEditor: (options: {
     contentsRef: MutableRefObject<HTMLDivElement | null>;
-  }) => React.JSX.Element;
+  }) => JSX.Element;
   renderToastManager: (
     _: Readonly<{ containerWidthBreakpoint: WidthBreakpoint }>
-  ) => React.JSX.Element;
+  ) => JSX.Element;
   renderUpdateDialog: (
     _: Readonly<{ containerWidthBreakpoint: WidthBreakpoint }>
-  ) => React.JSX.Element;
+  ) => JSX.Element;
   renderPreferencesChatFoldersPage: (
     props: SmartPreferencesChatFoldersPageProps
-  ) => React.JSX.Element;
+  ) => JSX.Element;
   renderPreferencesEditChatFolderPage: (
     props: SmartPreferencesEditChatFolderPageProps
-  ) => React.JSX.Element;
+  ) => JSX.Element;
 
   // Other props
   addCustomColor: (color: CustomColorType) => unknown;
+  disableLocalBackups: ({
+    deleteExistingBackups,
+  }: {
+    deleteExistingBackups: boolean;
+  }) => Promise<void>;
   doDeleteAllData: () => unknown;
   editCustomColor: (colorId: string, color: CustomColorType) => unknown;
   getMessageCountBySchemaVersion: () => Promise<MessageCountBySchemaVersionType>;
   getMessageSampleForSchemaVersion: (
     version: number
   ) => Promise<Array<MessageAttributesType>>;
+  getPreferredBadge: PreferredBadgeSelectorType;
   resumeBackupMediaDownload: () => void;
   pauseBackupMediaDownload: () => void;
   getConversationsWithCustomColor: (colorId: string) => Array<ConversationType>;
@@ -283,7 +301,7 @@ type PropsFunctionType = {
 
   internalAddDonationReceipt: (receipt: DonationReceipt) => void;
   saveAttachmentToDisk: (options: {
-    data: Uint8Array;
+    data: Uint8Array<ArrayBuffer>;
     name: string;
     baseDir?: string | undefined;
   }) => Promise<{ fullPath: string; name: string } | null>;
@@ -301,19 +319,20 @@ type PropsFunctionType = {
   ) => unknown;
   onAutoDownloadUpdateChange: CheckboxChangeHandlerType;
   onAutoLaunchChange: CheckboxChangeHandlerType;
-  onBackupKeyViewedChange: (keyViewed: boolean) => void;
+  onBackupKeyViewed: ({ backupKeyHash }: { backupKeyHash: string }) => void;
   onCallNotificationsChange: CheckboxChangeHandlerType;
   onCallRingtoneNotificationChange: CheckboxChangeHandlerType;
   onContentProtectionChange: CheckboxChangeHandlerType;
   onEndCallOnLockChange: CheckboxChangeHandlerType;
   onCountMutedConversationsChange: CheckboxChangeHandlerType;
-  onEmojiSkinToneDefaultChange: (emojiSkinTone: EmojiSkinTone) => void;
+  onEmojiSkinToneDefaultChange: (emojiSkinTone: Emoji.SkinTone) => void;
   onHasKeyTransparencyDisabledChanged: SelectChangeHandlerType<boolean>;
   onHasStoriesDisabledChanged: SelectChangeHandlerType<boolean>;
   onHideMenuBarChange: CheckboxChangeHandlerType;
   onIncomingCallNotificationsChange: CheckboxChangeHandlerType;
   onKeepMutedChatsArchivedChange: CheckboxChangeHandlerType;
   onLastSyncTimeChange: (time: number) => unknown;
+  onLinkPreviewsChange: CheckboxChangeHandlerType;
   onLocaleChange: (locale: string | null | undefined) => void;
   onMediaCameraPermissionsChange: CheckboxChangeHandlerType;
   onMediaPermissionsChange: CheckboxChangeHandlerType;
@@ -323,7 +342,10 @@ type PropsFunctionType = {
   onNotificationAttentionChange: CheckboxChangeHandlerType;
   onNotificationContentChange: SelectChangeHandlerType<NotificationSettingType>;
   onNotificationsChange: CheckboxChangeHandlerType;
+  onPreferContactAvatarsChange: CheckboxChangeHandlerType;
+  onReadReceiptsChange: CheckboxChangeHandlerType;
   onRelayCallsChange: CheckboxChangeHandlerType;
+  onSealedSenderIndicatorsChange: CheckboxChangeHandlerType;
   onSelectedCameraChange: SelectChangeHandlerType<string | undefined>;
   onSelectedMicrophoneChange: SelectChangeHandlerType<AudioDevice | undefined>;
   onSelectedSpeakerChange: SelectChangeHandlerType<AudioDevice | undefined>;
@@ -332,16 +354,26 @@ type PropsFunctionType = {
   onTextFormattingChange: CheckboxChangeHandlerType;
   onThemeChange: SelectChangeHandlerType<ThemeType>;
   onToggleNavTabsCollapse: (navTabsCollapsed: boolean) => void;
+  onTypingIndicatorsChange: CheckboxChangeHandlerType;
   onUniversalExpireTimerChange: SelectChangeHandlerType<number>;
-  onWhoCanSeeMeChange: SelectChangeHandlerType<PhoneNumberSharingMode>;
   onWhoCanFindMeChange: SelectChangeHandlerType<PhoneNumberDiscoverability>;
+  onWhoCanSeeMeChange: SelectChangeHandlerType<PhoneNumberSharingMode>;
   onZoomFactorChange: SelectChangeHandlerType<ZoomFactorType>;
+  openFileInFolder: (path: string) => void;
   internalDeleteAllMegaphones: () => Promise<number>;
   __dangerouslyRunAbitraryReadOnlySqlQuery: (
     readonlySqlQuery: string
   ) => Promise<ReadonlyArray<RowType<object>>>;
   cqsTestMode: boolean;
   setCqsTestMode: (value: boolean) => void;
+  setDredDuration: (value: number | undefined) => void;
+  setIsDirectVp9Enabled: (value: boolean | undefined) => void;
+  setDirectMaxBitrate: (value: number | undefined) => void;
+  setIsGroupVp9Enabled: (value: boolean | undefined) => void;
+  setGroupMaxBitrate: (value: number | undefined) => void;
+  setSfuUrl: (value: string | undefined) => void;
+  forceKeyTransparencyCheck: () => Promise<void>;
+  keyTransparencySelfHealth: StorageAccessType['keyTransparencySelfHealth'];
 
   // Localization
   i18n: LocalizerType;
@@ -380,37 +412,38 @@ const DEFAULT_ZOOM_FACTORS = [
 ];
 
 export function Preferences({
-  accountEntropyPool,
   addCustomColor,
   autoDownloadAttachment,
   availableCameras,
   availableLocales,
   availableMicrophones,
   availableSpeakers,
-  backupFeatureEnabled,
   backupMediaDownloadStatus,
-  chatFoldersFeatureEnabled,
   pauseBackupMediaDownload,
   resumeBackupMediaDownload,
   cancelBackupMediaDownload,
   backupFreeMediaDays,
-  backupKeyViewed,
+  backupKey,
+  backupKeyHash,
   backupTier,
   backupSubscriptionStatus,
   backupLocalBackupsEnabled,
   badge,
-  blockedCount,
+  blockedContacts,
+  blockedGroups,
   currentChatFoldersCount,
   cloudBackupStatus,
   customColors,
   defaultConversationColor,
   deviceName = '',
+  disableLocalBackups,
   doDeleteAllData,
   editCustomColor,
   emojiSkinToneDefault,
   getConversationsWithCustomColor,
   getMessageCountBySchemaVersion,
   getMessageSampleForSchemaVersion,
+  getPreferredBadge,
   hasAnyCurrentCustomChatFolders,
   hasAudioNotifications,
   hasAutoConvertEmoji,
@@ -433,8 +466,10 @@ export function Preferences({
   hasMinimizeToSystemTray,
   hasNotificationAttention,
   hasNotifications,
+  hasPreferContactAvatars,
   hasReadReceipts,
   hasRelayCalls,
+  hasSealedSenderIndicators,
   hasSpellCheck,
   hasStoriesDisabled,
   hasTextFormatting,
@@ -449,7 +484,6 @@ export function Preferences({
   isHideMenuBarSupported,
   isKeyTransparencyAvailable,
   isNotificationAttentionSupported,
-  isPlaintextExportEnabled,
   isSyncSupported,
   isSystemTraySupported,
   isMinimizeToAndStartInSystemTraySupported,
@@ -467,7 +501,7 @@ export function Preferences({
   onAutoDownloadAttachmentChange,
   onAutoDownloadUpdateChange,
   onAutoLaunchChange,
-  onBackupKeyViewedChange,
+  onBackupKeyViewed,
   onCallNotificationsChange,
   onCallRingtoneNotificationChange,
   onContentProtectionChange,
@@ -480,6 +514,7 @@ export function Preferences({
   onIncomingCallNotificationsChange,
   onKeepMutedChatsArchivedChange,
   onLastSyncTimeChange,
+  onLinkPreviewsChange,
   onLocaleChange,
   onMediaCameraPermissionsChange,
   onMediaPermissionsChange,
@@ -489,7 +524,10 @@ export function Preferences({
   onNotificationAttentionChange,
   onNotificationContentChange,
   onNotificationsChange,
+  onPreferContactAvatarsChange,
+  onReadReceiptsChange,
   onRelayCallsChange,
+  onSealedSenderIndicatorsChange,
   onSelectedCameraChange,
   onSelectedMicrophoneChange,
   onSelectedSpeakerChange,
@@ -498,9 +536,10 @@ export function Preferences({
   onTextFormattingChange,
   onThemeChange,
   onToggleNavTabsCollapse,
+  onTypingIndicatorsChange,
   onUniversalExpireTimerChange,
-  onWhoCanSeeMeChange,
   onWhoCanFindMeChange,
+  onWhoCanSeeMeChange,
   onZoomFactorChange,
   otherTabsUnreadStats,
   settingsLocation,
@@ -520,6 +559,9 @@ export function Preferences({
   renderUpdateDialog,
   renderPreferencesChatFoldersPage,
   renderPreferencesEditChatFolderPage,
+  openFileInFolder,
+  osName,
+  previouslyViewedBackupKeyHash,
   promptOSAuth,
   resetAllChatColors,
   resetDefaultChatColor,
@@ -538,7 +580,7 @@ export function Preferences({
   localeOverride,
   theme,
   themeSetting,
-  universalExpireTimer = DurationInSeconds.ZERO,
+  universalExpireTimer,
   validateBackup,
   whoCanFindMe,
   whoCanSeeMe,
@@ -552,7 +594,22 @@ export function Preferences({
   __dangerouslyRunAbitraryReadOnlySqlQuery,
   cqsTestMode,
   setCqsTestMode,
-}: PropsType): React.JSX.Element {
+  setDredDuration,
+  dredDuration,
+  setIsDirectVp9Enabled,
+  isDirectVp9Enabled,
+  setDirectMaxBitrate,
+  directMaxBitrate,
+  setIsGroupVp9Enabled,
+  isGroupVp9Enabled,
+  setGroupMaxBitrate,
+  groupMaxBitrate,
+  setSfuUrl,
+  sfuUrl,
+  forceKeyTransparencyCheck,
+  keyTransparencySelfHealth,
+  weArePrimaryDevice,
+}: PropsType): JSX.Element {
   const storiesId = useId();
   const themeSelectId = useId();
   const zoomSelectId = useId();
@@ -592,20 +649,12 @@ export function Preferences({
     setLanguageDialog(null);
     setSelectedLanguageLocale(localeOverride);
   }
-  const shouldShowBackupsPage =
-    backupFeatureEnabled || backupLocalBackupsEnabled;
 
-  if (
-    settingsLocation.page === SettingsPage.Backups &&
-    !shouldShowBackupsPage
-  ) {
-    setSettingsLocation({ page: SettingsPage.General });
-  }
   if (settingsLocation.page === SettingsPage.Internal && !isInternalUser) {
     setSettingsLocation({ page: SettingsPage.General });
   }
 
-  let maybeUpdateDialog: React.JSX.Element | undefined;
+  let maybeUpdateDialog: JSX.Element | undefined;
   if (shouldShowUpdateDialog) {
     maybeUpdateDialog = renderUpdateDialog({
       containerWidthBreakpoint: WidthBreakpoint.Wide,
@@ -633,7 +682,7 @@ export function Preferences({
 
   const handleContentProtectionChange = useCallback(
     (value: boolean) => {
-      if (value === true || !isContentProtectionNeeded) {
+      if (value || !isContentProtectionNeeded) {
         onContentProtectionChange(value);
       } else {
         setConfirmContentProtection(true);
@@ -762,7 +811,7 @@ export function Preferences({
     });
   }, [localeSearchOptions, languageSearchInput]);
 
-  let content: React.JSX.Element | undefined;
+  let content: JSX.Element | undefined;
 
   if (settingsLocation.page === SettingsPage.Profile) {
     content = renderProfileEditor({
@@ -1031,25 +1080,24 @@ export function Preferences({
           </Modal>
         )}
         {languageDialog === LanguageDialog.Confirmation && (
-          <ConfirmationDialog
-            dialogName="Preferences__Language"
-            i18n={i18n}
+          <AxoConfirmDialog.Root
+            open
+            onOpenChange={closeLanguageDialog}
             title={i18n('icu:Preferences__LanguageModal__Restart__Title')}
-            onCancel={closeLanguageDialog}
-            onClose={closeLanguageDialog}
-            cancelText={i18n('icu:cancel')}
-            actions={[
-              {
-                text: i18n('icu:Preferences__LanguageModal__Restart__Button'),
-                style: 'affirmative',
-                action: () => {
-                  onLocaleChange(selectedLanguageLocale);
-                },
-              },
-            ]}
+            description={i18n(
+              'icu:Preferences__LanguageModal__Restart__Description'
+            )}
           >
-            {i18n('icu:Preferences__LanguageModal__Restart__Description')}
-          </ConfirmationDialog>
+            <AxoConfirmDialog.Cancel>
+              {i18n('icu:cancel')}
+            </AxoConfirmDialog.Cancel>
+            <AxoConfirmDialog.Action
+              variant="primary"
+              onClick={() => onLocaleChange(selectedLanguageLocale)}
+            >
+              {i18n('icu:Preferences__LanguageModal__Restart__Button')}
+            </AxoConfirmDialog.Action>
+          </AxoConfirmDialog.Root>
         )}
         <Control
           icon
@@ -1062,7 +1110,9 @@ export function Preferences({
             <Select
               id={themeSelectId}
               disabled={themeSetting === undefined}
-              onChange={onThemeChange}
+              onChange={value => {
+                onThemeChange(value as ThemeType);
+              }}
               options={[
                 {
                   text: i18n('icu:themeSystem'),
@@ -1158,12 +1208,23 @@ export function Preferences({
           />
           <Checkbox
             checked={hasLinkPreviews}
-            description={i18n('icu:Preferences__link-previews--description')}
-            disabled
+            description={i18n(
+              'icu:Preferences__link-previews--new-description'
+            )}
             label={i18n('icu:Preferences__link-previews--title')}
             moduleClassName="Preferences__checkbox"
             name="linkPreviews"
-            onChange={noop}
+            onChange={onLinkPreviewsChange}
+          />
+          <Checkbox
+            checked={hasPreferContactAvatars}
+            label={i18n('icu:Preferences__address-book-photos--title')}
+            description={i18n(
+              'icu:Preferences__address-book-photos--description'
+            )}
+            moduleClassName="Preferences__checkbox"
+            name="typingIndicators"
+            onChange={onPreferContactAvatarsChange}
           />
           <Checkbox
             checked={hasAutoConvertEmoji}
@@ -1194,7 +1255,7 @@ export function Preferences({
               right={
                 <FunSkinTonesList
                   i18n={i18n}
-                  emoji={EMOJI_PARENT_KEY_CONSTANTS.RAISED_HAND}
+                  emoji={Emoji.HAND}
                   skinTone={emojiSkinToneDefault}
                   onSelectSkinTone={onEmojiSkinToneDefaultChange}
                 />
@@ -1202,83 +1263,75 @@ export function Preferences({
             />
           </SettingsRow>
         </SettingsRow>
-        {chatFoldersFeatureEnabled && (
-          <SettingsRow
-            title={i18n(
-              'icu:Preferences__ChatsPage__ChatFoldersSection__Title'
-            )}
-          >
-            <Control
-              left={
-                hasAnyCurrentCustomChatFolders
+        <SettingsRow
+          title={i18n('icu:Preferences__ChatsPage__ChatFoldersSection__Title')}
+        >
+          <Control
+            left={
+              hasAnyCurrentCustomChatFolders
+                ? i18n(
+                    'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Title--WithChatFolders'
+                  )
+                : i18n(
+                    'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Title'
+                  )
+            }
+            description={
+              hasAnyCurrentCustomChatFolders
+                ? i18n(
+                    'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Description--WithChatFolders',
+                    { chatFoldersCount: currentChatFoldersCount }
+                  )
+                : i18n(
+                    'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Description'
+                  )
+            }
+            right={
+              <AxoButton.Root
+                size="lg"
+                variant="secondary"
+                onClick={() => {
+                  setSettingsLocation({
+                    page: SettingsPage.ChatFolders,
+                    previousLocation: null,
+                  });
+                }}
+              >
+                {hasAnyCurrentCustomChatFolders
                   ? i18n(
-                      'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Title--WithChatFolders'
+                      'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Button--WithChatFolders'
                     )
                   : i18n(
-                      'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Title'
-                    )
-              }
-              description={
-                hasAnyCurrentCustomChatFolders
-                  ? i18n(
-                      'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Description--WithChatFolders',
-                      { chatFoldersCount: currentChatFoldersCount }
-                    )
-                  : i18n(
-                      'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Description'
-                    )
-              }
-              right={
-                <AxoButton.Root
-                  size="lg"
-                  variant="secondary"
-                  onClick={() => {
-                    setSettingsLocation({
-                      page: SettingsPage.ChatFolders,
-                      previousLocation: null,
-                    });
-                  }}
-                >
-                  {hasAnyCurrentCustomChatFolders
-                    ? i18n(
-                        'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Button--WithChatFolders'
-                      )
-                    : i18n(
-                        'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Button'
-                      )}
-                </AxoButton.Root>
-              }
-            />
-          </SettingsRow>
-        )}
+                      'icu:Preferences__ChatsPage__ChatFoldersSection__AddChatFolderItem__Button'
+                    )}
+              </AxoButton.Root>
+            }
+          />
+        </SettingsRow>
 
-        {isPlaintextExportEnabled && (
-          <SettingsRow>
-            <Control
-              left={
-                <>
-                  <div>
-                    {i18n('icu:PlaintextExport--PreferencesRow--Header')}
-                  </div>
-                  <div className="Preferences__description">
-                    {i18n('icu:PlaintextExport--PreferencesRow--Description')}
-                  </div>
-                </>
-              }
-              right={
-                <div className="Preferences__right-button">
-                  <AxoButton.Root
-                    variant="secondary"
-                    size="lg"
-                    onClick={startPlaintextExport}
-                  >
-                    {i18n('icu:PlaintextExport--ActionButton')}
-                  </AxoButton.Root>
+        <SettingsRow>
+          <Control
+            left={
+              <>
+                <div>{i18n('icu:PlaintextExport--PreferencesRow--Header')}</div>
+                <div className="Preferences__description">
+                  {i18n('icu:PlaintextExport--PreferencesRow--Description')}
                 </div>
-              }
-            />
-          </SettingsRow>
-        )}
+              </>
+            }
+            right={
+              <div className="Preferences__right-button">
+                <AxoButton.Root
+                  variant="secondary"
+                  size="lg"
+                  onClick={startPlaintextExport}
+                >
+                  {i18n('icu:PlaintextExport--ActionButton')}
+                </AxoButton.Root>
+              </div>
+            }
+          />
+        </SettingsRow>
 
         {isSyncSupported && (
           <SettingsRow>
@@ -1305,10 +1358,7 @@ export function Preferences({
                   <AxoButton.Root
                     variant="secondary"
                     size="lg"
-                    disabled={nowSyncing}
-                    experimentalSpinner={
-                      nowSyncing ? { 'aria-label': i18n('icu:syncing') } : null
-                    }
+                    pending={nowSyncing}
                     onClick={async () => {
                       setShowSyncFailed(false);
                       setNowSyncing(true);
@@ -1529,7 +1579,9 @@ export function Preferences({
               <Select
                 ariaLabel={i18n('icu:Preferences--notification-content')}
                 disabled={!hasNotifications}
-                onChange={onNotificationContentChange}
+                onChange={value => {
+                  onNotificationContentChange(value as NotificationSettingType);
+                }}
                 options={[
                   {
                     text: i18n('icu:nameAndMessage'),
@@ -1629,6 +1681,25 @@ export function Preferences({
   } else if (settingsLocation.page === SettingsPage.Privacy) {
     const isCustomDisappearingMessageValue =
       !DEFAULT_DURATIONS_SET.has(universalExpireTimer);
+    let blockedDescription;
+
+    if (
+      (!blockedContacts.length && !blockedGroups.length) ||
+      (blockedContacts.length && blockedGroups.length)
+    ) {
+      blockedDescription = i18n('icu:Preferences--blocked-count-both-new', {
+        num: blockedContacts.length + blockedGroups.length,
+      });
+    } else if (blockedContacts.length) {
+      blockedDescription = i18n('icu:Preferences--blocked-count-contacts-new', {
+        num: blockedContacts.length,
+      });
+    } else {
+      blockedDescription = i18n('icu:Preferences--blocked-count-groups-new', {
+        num: blockedGroups.length,
+      });
+    }
+
     const pageContents = (
       <>
         <SettingsRow>
@@ -1665,33 +1736,40 @@ export function Preferences({
         <SettingsRow>
           <Control
             left={i18n('icu:Preferences--blocked')}
-            right={i18n('icu:Preferences--blocked-count', {
-              num: blockedCount,
-            })}
+            description={blockedDescription}
+            right={
+              <AxoButton.Root
+                variant="secondary"
+                size="lg"
+                disabled={!blockedContacts.length && !blockedGroups.length}
+                onClick={() =>
+                  setSettingsLocation({ page: SettingsPage.Blocked })
+                }
+              >
+                {i18n('icu:view')}
+              </AxoButton.Root>
+            }
           />
         </SettingsRow>
         <SettingsRow title={i18n('icu:Preferences--messaging')}>
           <Checkbox
             checked={hasReadReceipts}
-            disabled
             label={i18n('icu:Preferences--read-receipts')}
+            description={i18n('icu:Preferences--read-receipts--description')}
             moduleClassName="Preferences__checkbox"
             name="readReceipts"
-            onChange={noop}
+            onChange={onReadReceiptsChange}
           />
           <Checkbox
             checked={hasTypingIndicators}
-            disabled
             label={i18n('icu:Preferences--typing-indicators')}
+            description={i18n(
+              'icu:Preferences--typing-indicators--description'
+            )}
             moduleClassName="Preferences__checkbox"
             name="typingIndicators"
-            onChange={noop}
+            onChange={onTypingIndicatorsChange}
           />
-          <div className="Preferences__padding">
-            <div className="Preferences__description">
-              {i18n('icu:Preferences__privacy--description')}
-            </div>
-          </div>
         </SettingsRow>
         {showDisappearingTimerDialog && (
           <DisappearingTimeDialog
@@ -1781,25 +1859,22 @@ export function Preferences({
           </SettingsRow>
         )}
         {confirmContentProtection ? (
-          <ConfirmationDialog
-            dialogName="Preference.confirmContentProtection"
-            actions={[
-              {
-                action: () => onContentProtectionChange(false),
-                style: 'negative',
-                text: i18n(
-                  'icu:Preferences__content-protection__modal--disable'
-                ),
-              },
-            ]}
-            i18n={i18n}
-            onClose={() => {
-              setConfirmContentProtection(false);
-            }}
+          <AxoConfirmDialog.Root
+            open={confirmContentProtection}
+            onOpenChange={setConfirmContentProtection}
             title={i18n('icu:Preferences__content-protection__modal--title')}
+            description={i18n(
+              'icu:Preferences__content-protection__modal--body'
+            )}
           >
-            {i18n('icu:Preferences__content-protection__modal--body')}
-          </ConfirmationDialog>
+            <AxoConfirmDialog.Cancel />
+            <AxoConfirmDialog.Action
+              variant="destructive"
+              onClick={() => onContentProtectionChange(false)}
+            >
+              {i18n('icu:Preferences__content-protection__modal--disable')}
+            </AxoConfirmDialog.Action>
+          </AxoConfirmDialog.Root>
         ) : null}
         <SettingsRow title={i18n('icu:Stories__title')}>
           <FlowingControl>
@@ -1838,109 +1913,166 @@ export function Preferences({
             </div>
           </FlowingControl>
         </SettingsRow>
-        {isKeyTransparencyAvailable && (
-          <SettingsRow>
+        <SettingsRow title={i18n('icu:Preferences--advanced')}>
+          <Checkbox
+            checked={hasSealedSenderIndicators}
+            label={
+              <>
+                {i18n('icu:Preferences__PrivacyPage__ShowStatusIcon__Label')}
+                <div className="Preferences__Privacy__StatusIcon" />
+              </>
+            }
+            description={i18n(
+              'icu:Preferences__PrivacyPage__ShowStatusIcon__Description'
+            )}
+            moduleClassName="Preferences__checkbox"
+            name="showStatusIcon"
+            onChange={onSealedSenderIndicatorsChange}
+          />
+          {isKeyTransparencyAvailable && (
             <Checkbox
               checked={!hasKeyTransparencyDisabled}
               label={i18n(
                 'icu:Preferences__PrivacyPage__KeyTransparency__Label'
               )}
+              description={
+                <>
+                  {i18n(
+                    'icu:Preferences__PrivacyPage__KeyTransparency__Description'
+                  )}
+                  &ensp;
+                  <a
+                    href={KEY_TRANSPARENCY_URL}
+                    rel="noreferrer"
+                    target="_blank"
+                    className={tw('text-label-primary')}
+                  >
+                    <I18n
+                      i18n={i18n}
+                      id="icu:Preferences__PrivacyPage__KeyTransparency__LearnMore"
+                    />
+                  </a>
+                </>
+              }
               moduleClassName="Preferences__checkbox"
               name="keyTransparency"
               onChange={() =>
                 onHasKeyTransparencyDisabledChanged(!hasKeyTransparencyDisabled)
               }
             />
-            <div className="Preferences__padding">
-              <div className="Preferences__description">
-                {i18n(
-                  'icu:Preferences__PrivacyPage__KeyTransparency__Description'
-                )}
-                &ensp;
-                <a
-                  href={KEY_TRANSPARENCY_URL}
-                  rel="noreferrer"
-                  target="_blank"
-                  className={tw('text-label-primary')}
-                >
-                  <I18n
-                    i18n={i18n}
-                    id="icu:Preferences__PrivacyPage__KeyTransparency__LearnMore"
-                  />
-                </a>
-              </div>
-            </div>
-          </SettingsRow>
-        )}
-        <SettingsRow>
-          <FlowingControl>
-            <div
-              className={classNames(
-                'Preferences__pnp',
-                'Preferences__two-thirds-flow'
-              )}
-            >
-              <div>{i18n('icu:clearDataHeader')}</div>
-              <div className="Preferences__description">
-                {i18n('icu:clearDataExplanation')}
-              </div>
-            </div>
-
-            <div
-              className={classNames(
-                'Preferences__pnp',
-                'Preferences__flow-button',
-                'Preferences__one-third-flow',
-                'Preferences__one-third-flow--align-right'
-              )}
-            >
-              <AxoButton.Root
-                variant="subtle-destructive"
-                size="lg"
-                onClick={() => setConfirmDelete(true)}
-              >
-                {i18n('icu:clearDataButton')}
-              </AxoButton.Root>
-            </div>
-          </FlowingControl>
+          )}
         </SettingsRow>
-        {confirmDelete ? (
-          <ConfirmationDialog
-            dialogName="Preference.deleteAllData"
-            actions={[
-              {
-                action: doDeleteAllData,
-                style: 'negative',
-                text: i18n('icu:clearDataButton'),
-              },
-            ]}
-            i18n={i18n}
-            onClose={() => {
-              setConfirmDelete(false);
-            }}
+        <SettingsRow>
+          {!weArePrimaryDevice && (
+            <FlowingControl>
+              <div
+                className={classNames(
+                  'Preferences__pnp',
+                  'Preferences__two-thirds-flow'
+                )}
+              >
+                <div>{i18n('icu:clearDataHeader')}</div>
+                <div className="Preferences__description">
+                  {i18n('icu:clearDataExplanation')}
+                </div>
+              </div>
+
+              <div
+                className={classNames(
+                  'Preferences__pnp',
+                  'Preferences__flow-button',
+                  'Preferences__one-third-flow',
+                  'Preferences__one-third-flow--align-right'
+                )}
+              >
+                <AxoButton.Root
+                  variant="subtle-destructive"
+                  size="lg"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  {i18n('icu:clearDataButton')}
+                </AxoButton.Root>
+              </div>
+            </FlowingControl>
+          )}
+
+          <AxoConfirmDialog.Root
+            open={confirmDelete && !weArePrimaryDevice}
+            onOpenChange={setConfirmDelete}
             title={i18n('icu:deleteAllDataHeader')}
+            description={i18n('icu:deleteAllDataBody')}
           >
-            {i18n('icu:deleteAllDataBody')}
-          </ConfirmationDialog>
-        ) : null}
-        {confirmStoriesOff ? (
-          <ConfirmationDialog
-            dialogName="Preference.turnStoriesOff"
-            actions={[
-              {
-                action: () => onHasStoriesDisabledChanged(true),
-                style: 'negative',
-                text: i18n('icu:Preferences__turn-stories-off--action'),
-              },
-            ]}
-            i18n={i18n}
-            onClose={() => {
-              setConfirmStoriesOff(false);
-            }}
+            <AxoConfirmDialog.Cancel />
+            <AxoConfirmDialog.Action
+              variant="destructive"
+              onClick={doDeleteAllData}
+            >
+              {i18n('icu:clearDataButton')}
+            </AxoConfirmDialog.Action>
+          </AxoConfirmDialog.Root>
+
+          {weArePrimaryDevice && (
+            <FlowingControl>
+              <div
+                className={classNames(
+                  'Preferences__pnp',
+                  'Preferences__two-thirds-flow'
+                )}
+              >
+                <div>{i18n('icu:deleteAccountHeader')}</div>
+                <div className="Preferences__description">
+                  {i18n('icu:deleteAccountExplanation')}
+                </div>
+              </div>
+
+              <div
+                className={classNames(
+                  'Preferences__pnp',
+                  'Preferences__flow-button',
+                  'Preferences__one-third-flow',
+                  'Preferences__one-third-flow--align-right'
+                )}
+              >
+                <AxoButton.Root
+                  variant="subtle-destructive"
+                  size="lg"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  {i18n('icu:deleteAccountButton')}
+                </AxoButton.Root>
+              </div>
+            </FlowingControl>
+          )}
+          <AxoConfirmDialog.Root
+            open={confirmDelete && weArePrimaryDevice}
+            onOpenChange={setConfirmDelete}
+            title={i18n('icu:deleteAccountDialogHeader')}
+            description={i18n('icu:deleteAccountDialogBody')}
           >
-            {i18n('icu:Preferences__turn-stories-off--body')}
-          </ConfirmationDialog>
-        ) : null}
+            <AxoConfirmDialog.Cancel />
+            <AxoConfirmDialog.Action
+              variant="destructive"
+              onClick={doDeleteAllData}
+            >
+              {i18n('icu:deleteAccountButton')}
+            </AxoConfirmDialog.Action>
+          </AxoConfirmDialog.Root>
+        </SettingsRow>
+        <AxoConfirmDialog.Root
+          open={confirmStoriesOff}
+          onOpenChange={setConfirmStoriesOff}
+          // @ts-expect-error ConfirmationDialog migration: Needs title
+          title={null}
+          description={i18n('icu:Preferences__turn-stories-off--body')}
+        >
+          <AxoConfirmDialog.Cancel />
+          <AxoConfirmDialog.Action
+            variant="destructive"
+            onClick={() => onHasStoriesDisabledChanged(true)}
+          >
+            {i18n('icu:Preferences__turn-stories-off--action')}
+          </AxoConfirmDialog.Action>
+        </AxoConfirmDialog.Root>
       </>
     );
     content = (
@@ -1955,7 +2087,7 @@ export function Preferences({
       <>
         <SettingsRow title={i18n('icu:Preferences__media-auto-download')}>
           <Checkbox
-            checked={autoDownloadAttachment.photos !== false}
+            checked={autoDownloadAttachment.photos}
             label={i18n('icu:Preferences__media-auto-download__photos')}
             moduleClassName="Preferences__checkbox"
             name="autoLaunch"
@@ -1967,7 +2099,7 @@ export function Preferences({
             }
           />
           <Checkbox
-            checked={autoDownloadAttachment.videos !== false}
+            checked={autoDownloadAttachment.videos}
             label={i18n('icu:Preferences__media-auto-download__videos')}
             moduleClassName="Preferences__checkbox"
             name="autoLaunch"
@@ -1979,7 +2111,7 @@ export function Preferences({
             }
           />
           <Checkbox
-            checked={autoDownloadAttachment.audio !== false}
+            checked={autoDownloadAttachment.audio}
             label={i18n('icu:Preferences__media-auto-download__audio')}
             moduleClassName="Preferences__checkbox"
             name="autoLaunch"
@@ -1991,7 +2123,7 @@ export function Preferences({
             }
           />
           <Checkbox
-            checked={autoDownloadAttachment.documents !== false}
+            checked={autoDownloadAttachment.documents}
             label={i18n('icu:Preferences__media-auto-download__documents')}
             moduleClassName="Preferences__checkbox"
             name="autoLaunch"
@@ -2037,7 +2169,9 @@ export function Preferences({
               )}
             >
               <Select
-                onChange={onSentMediaQualityChange}
+                onChange={value => {
+                  onSentMediaQualityChange(value as SentMediaQualityType);
+                }}
                 options={[
                   {
                     text: i18n('icu:sentMediaQualityStandard'),
@@ -2111,6 +2245,76 @@ export function Preferences({
       existingChatFolderId: settingsLocation.chatFolderId,
       initChatFolderParams: settingsLocation.initChatFolderParams,
     });
+  } else if (settingsLocation.page === SettingsPage.Blocked) {
+    const backButton = (
+      <button
+        aria-label={i18n('icu:goBack')}
+        className="Preferences__back-icon"
+        onClick={() => setSettingsLocation({ page: SettingsPage.Privacy })}
+        type="button"
+      />
+    );
+    const pageContents = (
+      <>
+        <SettingsRow>
+          <div className="Preferences__padding">
+            <div className="Preferences__description">
+              {i18n('icu:Preferences--blocked-users--description')}
+            </div>
+          </div>
+        </SettingsRow>
+        {blockedContacts.length > 0 ? (
+          <SettingsRow title={i18n('icu:Preferences--blocked-users')}>
+            {blockedContacts.map(item => {
+              return (
+                <div className={tw('flex w-full items-center px-[14px]')}>
+                  <div className={tw('p-2')}>
+                    <Avatar
+                      conversationType={item.type}
+                      badge={getPreferredBadge(item.badges)}
+                      i18n={i18n}
+                      size={AvatarSize.THIRTY_SIX}
+                      theme={theme}
+                      {...item}
+                    />
+                  </div>
+                  <div>{item.title}</div>
+                </div>
+              );
+            })}
+          </SettingsRow>
+        ) : undefined}
+        {blockedGroups.length > 0 ? (
+          <SettingsRow title={i18n('icu:Preferences--blocked-groups')}>
+            {blockedGroups.map(item => {
+              return (
+                <div className={tw('flex w-full items-center px-[14px]')}>
+                  <div className={tw('p-2')}>
+                    <Avatar
+                      conversationType={item.type}
+                      badge={getPreferredBadge(item.badges)}
+                      i18n={i18n}
+                      size={AvatarSize.THIRTY_SIX}
+                      theme={theme}
+                      {...item}
+                    />
+                  </div>
+                  <div>{item.title}</div>
+                </div>
+              );
+            })}
+          </SettingsRow>
+        ) : undefined}
+      </>
+    );
+    content = (
+      <PreferencesContent
+        backButton={backButton}
+        contents={pageContents}
+        contentsRef={settingsPaneRef}
+        title={i18n('icu:Preferences--blocked')}
+      />
+    );
   } else if (settingsLocation.page === SettingsPage.PNP) {
     let sharingDescription: string;
 
@@ -2205,43 +2409,37 @@ export function Preferences({
             </div>
           </div>
         </SettingsRow>
-        {confirmPnpNotDiscoverable && (
-          <ConfirmationDialog
-            i18n={i18n}
-            title={i18n(
-              'icu:Preferences__pnp__discoverability__nobody__confirmModal__title'
-            )}
-            dialogName="Preference.turnPnpDiscoveryOff"
-            onClose={() => {
-              setConfirmPnpNoDiscoverable(false);
-            }}
-            actions={[
-              {
-                action: () =>
-                  onWhoCanFindMeChange(
-                    PhoneNumberDiscoverability.NotDiscoverable
-                  ),
-                style: 'affirmative',
-                text: i18n('icu:ok'),
-              },
-            ]}
+        <AxoConfirmDialog.Root
+          open={confirmPnpNotDiscoverable}
+          onOpenChange={() => setConfirmPnpNoDiscoverable(false)}
+          title={i18n(
+            'icu:Preferences__pnp__discoverability__nobody__confirmModal__title'
+          )}
+          description={i18n(
+            'icu:Preferences__pnp__discoverability__nobody__confirmModal__description',
+            {
+              // This is a rare instance where we want to interpolate the exact
+              // text of the string into quotes in the translation as an
+              // explanation.
+              settingTitle: i18n(
+                'icu:Preferences__pnp__discoverability--title'
+              ),
+              nobodyLabel: i18n(
+                'icu:Preferences__pnp__discoverability__nobody'
+              ),
+            }
+          )}
+        >
+          <AxoConfirmDialog.Cancel />
+          <AxoConfirmDialog.Action
+            variant="primary"
+            onClick={() =>
+              onWhoCanFindMeChange(PhoneNumberDiscoverability.NotDiscoverable)
+            }
           >
-            {i18n(
-              'icu:Preferences__pnp__discoverability__nobody__confirmModal__description',
-              {
-                // This is a rare instance where we want to interpolate the exact
-                // text of the string into quotes in the translation as an
-                // explanation.
-                settingTitle: i18n(
-                  'icu:Preferences__pnp__discoverability--title'
-                ),
-                nobodyLabel: i18n(
-                  'icu:Preferences__pnp__discoverability__nobody'
-                ),
-              }
-            )}
-          </ConfirmationDialog>
-        )}
+            {i18n('icu:ok')}
+          </AxoConfirmDialog.Action>
+        </AxoConfirmDialog.Root>
       </>
     );
     content = (
@@ -2263,14 +2461,13 @@ export function Preferences({
       pageTitle = i18n('icu:Preferences__local-backups');
     }
     // Local backups setup page titles intentionally left blank
-
     let backPage: PreferencesBackupPage | undefined;
     if (settingsLocation.page === SettingsPage.LocalBackupsKeyReference) {
       backPage = SettingsPage.LocalBackups;
     } else if (settingsLocation.page !== SettingsPage.Backups) {
       backPage = SettingsPage.Backups;
     }
-    let backButton: React.JSX.Element | undefined;
+    let backButton: JSX.Element | undefined;
     if (backPage) {
       backButton = (
         <button
@@ -2283,9 +2480,9 @@ export function Preferences({
     }
     const pageContents = (
       <PreferencesBackups
-        accountEntropyPool={accountEntropyPool}
+        backupKey={backupKey}
+        backupKeyHash={backupKeyHash}
         backupFreeMediaDays={backupFreeMediaDays}
-        backupKeyViewed={backupKeyViewed}
         backupTier={backupTier}
         backupSubscriptionStatus={backupSubscriptionStatus}
         backupMediaDownloadStatus={backupMediaDownloadStatus}
@@ -2295,12 +2492,15 @@ export function Preferences({
         cloudBackupStatus={cloudBackupStatus}
         i18n={i18n}
         isLocalBackupsEnabled={backupLocalBackupsEnabled}
-        isRemoteBackupsEnabled={backupFeatureEnabled}
         lastLocalBackup={lastLocalBackup}
         locale={resolvedLocale}
         localBackupFolder={localBackupFolder}
-        onBackupKeyViewedChange={onBackupKeyViewedChange}
+        onBackupKeyViewed={onBackupKeyViewed}
+        openFileInFolder={openFileInFolder}
+        osName={osName}
         pickLocalBackupFolder={pickLocalBackupFolder}
+        previouslyViewedBackupKeyHash={previouslyViewedBackupKeyHash}
+        disableLocalBackups={disableLocalBackups}
         settingsLocation={settingsLocation}
         promptOSAuth={promptOSAuth}
         refreshCloudBackupStatus={refreshCloudBackupStatus}
@@ -2350,6 +2550,20 @@ export function Preferences({
             }
             cqsTestMode={cqsTestMode}
             setCqsTestMode={setCqsTestMode}
+            dredDuration={dredDuration}
+            setDredDuration={setDredDuration}
+            setIsDirectVp9Enabled={setIsDirectVp9Enabled}
+            isDirectVp9Enabled={isDirectVp9Enabled}
+            setDirectMaxBitrate={setDirectMaxBitrate}
+            directMaxBitrate={directMaxBitrate}
+            setIsGroupVp9Enabled={setIsGroupVp9Enabled}
+            isGroupVp9Enabled={isGroupVp9Enabled}
+            setGroupMaxBitrate={setGroupMaxBitrate}
+            groupMaxBitrate={groupMaxBitrate}
+            sfuUrl={sfuUrl}
+            setSfuUrl={setSfuUrl}
+            forceKeyTransparencyCheck={forceKeyTransparencyCheck}
+            keyTransparencySelfHealth={keyTransparencySelfHealth}
           />
         }
         contentsRef={settingsPaneRef}
@@ -2358,8 +2572,7 @@ export function Preferences({
     );
   }
   return (
-    <FunEmojiLocalizationProvider i18n={i18n}>
-      <div className="module-title-bar-drag-area" />
+    <>
       <div className="Preferences">
         <NavSidebar
           title={i18n('icu:Preferences--header')}
@@ -2433,19 +2646,21 @@ export function Preferences({
                     {i18n('icu:ProfileEditor__open')}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  className="Preferences__profile-chip__qr-icon-button"
-                  aria-label={i18n('icu:ProfileEditor__username-link__open')}
-                  onClick={() => {
-                    setSettingsLocation({
-                      page: SettingsPage.Profile,
-                      state: ProfileEditorPage.UsernameLink,
-                    });
-                  }}
-                >
-                  <div className="Preferences__profile-chip__qr-icon" />
-                </button>
+                {me.username && (
+                  <button
+                    type="button"
+                    className="Preferences__profile-chip__qr-icon-button"
+                    aria-label={i18n('icu:ProfileEditor__username-link__open')}
+                    onClick={() => {
+                      setSettingsLocation({
+                        page: SettingsPage.Profile,
+                        state: ProfileEditorPage.UsernameLink,
+                      });
+                    }}
+                  >
+                    <div className="Preferences__profile-chip__qr-icon" />
+                  </button>
+                )}
               </div>
               <button
                 type="button"
@@ -2525,7 +2740,8 @@ export function Preferences({
                   'Preferences__button--privacy': true,
                   'Preferences__button--selected':
                     settingsLocation.page === SettingsPage.Privacy ||
-                    settingsLocation.page === SettingsPage.PNP,
+                    settingsLocation.page === SettingsPage.PNP ||
+                    settingsLocation.page === SettingsPage.Blocked,
                 })}
                 onClick={() =>
                   setSettingsLocation({ page: SettingsPage.Privacy })
@@ -2547,23 +2763,21 @@ export function Preferences({
               >
                 {i18n('icu:Preferences__button--data-usage')}
               </button>
-              {shouldShowBackupsPage ? (
-                <button
-                  type="button"
-                  className={classNames({
-                    Preferences__button: true,
-                    'Preferences__button--backups': true,
-                    'Preferences__button--selected': isBackupPage(
-                      settingsLocation.page
-                    ),
-                  })}
-                  onClick={() =>
-                    setSettingsLocation({ page: SettingsPage.Backups })
-                  }
-                >
-                  {i18n('icu:Preferences__button--backups')}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className={classNames({
+                  Preferences__button: true,
+                  'Preferences__button--backups': true,
+                  'Preferences__button--selected': isBackupPage(
+                    settingsLocation.page
+                  ),
+                })}
+                onClick={() =>
+                  setSettingsLocation({ page: SettingsPage.Backups })
+                }
+              >
+                {i18n('icu:Preferences__button--backups')}
+              </button>
               <button
                 type="button"
                 className={classNames({
@@ -2600,7 +2814,8 @@ export function Preferences({
         </NavSidebar>
         {content}
       </div>
-    </FunEmojiLocalizationProvider>
+      <TitlebarDragArea />
+    </>
   );
 }
 
@@ -2620,12 +2835,12 @@ export function PreferencesContent({
   title,
   actions,
 }: {
-  backButton?: React.JSX.Element | undefined;
-  contents: React.JSX.Element | undefined;
+  backButton?: JSX.Element | undefined;
+  contents: JSX.Element | undefined;
   contentsRef: MutableRefObject<HTMLDivElement | null>;
   title: string | undefined;
   actions?: ReactNode;
-}): React.JSX.Element {
+}): JSX.Element {
   return (
     <div className="Preferences__content">
       <div className="Preferences__title">

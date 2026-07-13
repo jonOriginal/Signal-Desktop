@@ -1,41 +1,30 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { ForwardedRef, ReactNode } from 'react';
-import React, { forwardRef, memo, useCallback, useMemo, useState } from 'react';
+import type { ForwardedRef, ReactNode, JSX } from 'react';
+import { forwardRef, memo, useCallback, useMemo } from 'react';
 import { Tabs } from 'radix-ui';
-import { AnimatePresence, motion } from 'framer-motion';
-import type { LocalizerType } from '../../../types/I18N.std.js';
-import { tw } from '../../../axo/tw.dom.js';
-import { AxoIconButton } from '../../../axo/AxoIconButton.dom.js';
-import { AxoDropdownMenu } from '../../../axo/AxoDropdownMenu.dom.js';
-import { AriaClickable } from '../../../axo/AriaClickable.dom.js';
-import { UserText } from '../../UserText.dom.js';
-import type { PinnedMessageId } from '../../../types/PinnedMessage.std.js';
+import { AnimatePresence, motion } from 'motion/react';
+import type { LocalizerType } from '../../../types/I18N.std.ts';
+import { tw } from '../../../axo/tw.dom.tsx';
+import { AxoIconButton } from '../../../axo/AxoIconButton.dom.tsx';
+import { AxoDropdownMenu } from '../../../axo/AxoDropdownMenu.dom.tsx';
+import { AriaClickable } from '../../../axo/AriaClickable.dom.tsx';
+import { UserText } from '../../UserText.dom.tsx';
+import type { PinnedMessageId } from '../../../types/PinnedMessage.std.ts';
 import {
   MessageTextRenderer,
   RenderLocation,
-} from '../MessageTextRenderer.dom.js';
-import type { HydratedBodyRangesType } from '../../../types/BodyRange.std.js';
-import { AxoSymbol } from '../../../axo/AxoSymbol.dom.js';
-import { missingCaseError } from '../../../util/missingCaseError.std.js';
-import { stripNewlinesForLeftPane } from '../../../util/stripNewlinesForLeftPane.std.js';
+} from '../MessageTextRenderer.dom.tsx';
+import type { HydratedBodyRangesType } from '../../../types/BodyRange.std.ts';
+import { AxoSymbol } from '../../../axo/AxoSymbol.dom.tsx';
+import { missingCaseError } from '../../../util/missingCaseError.std.ts';
+import { stripNewlinesForLeftPane } from '../../../util/stripNewlinesForLeftPane.std.ts';
+import { usePrevious } from '../../../hooks/usePrevious.std.ts';
 
 enum Direction {
   None = 0,
   Backwards = -1,
   Forwards = 1,
-}
-
-// This `usePrevious()` hook is safe in React concurrent mode and doesn't break
-// when rendered multiple times with the same values in `<StrictMode>`
-function usePrevious<T>(value: T): T | null {
-  const [current, setCurrent] = useState<T>(value);
-  const [previous, setPrevious] = useState<T | null>(null);
-  if (current !== value) {
-    setCurrent(value);
-    setPrevious(current);
-  }
-  return previous;
 }
 
 export type PinMessageText = Readonly<{
@@ -105,8 +94,7 @@ export const PinnedMessagesBar = memo(function PinnedMessagesBar(
       return null;
     }
 
-    for (let index = 0; index < pins.length; index += 1) {
-      const value = pins[index];
+    for (const [index, value] of pins.entries()) {
       if (value.id === current) {
         return { index, value };
       }
@@ -251,8 +239,7 @@ function Row(props: { children: ReactNode }) {
         'contain-strict',
         'flex h-14 items-center pe-3 select-none',
         'rounded-xs',
-        'outline-0 outline-border-focused',
-        'data-[focused]:outline-[2.5px]'
+        'outline-none data-focused:outline-focus-ring'
       )}
     >
       {props.children}
@@ -273,7 +260,7 @@ function HiddenTrigger(props: {
 
   return (
     <AriaClickable.HiddenTrigger
-      aria-label={i18n(
+      label={i18n(
         'icu:PinnedMessagesBar__GoToMessageClickableArea__AccessibilityLabel'
       )}
       onClick={handlePinGoToCurrent}
@@ -340,8 +327,8 @@ function TabTrigger(props: {
         pinNumber: props.pinNumber,
       })}
       className={tw(
-        'group flex-1 px-[7px] outline-0',
-        props.pinsCount === 3 ? 'py-[1px]' : 'py-0.5'
+        'group flex-1 px-[7px] outline-none',
+        props.pinsCount === 3 ? 'py-px' : 'py-0.5'
       )}
     >
       <span
@@ -349,8 +336,7 @@ function TabTrigger(props: {
           'block h-full w-0.5 rounded-full',
           'bg-label-disabled',
           'group-data-[state=active]:bg-label-primary',
-          'outline-border-focused',
-          'group-focused:outline-[2.5px]'
+          'keyboard-mode:group-focus:outline-focus-ring'
         )}
       />
     </Tabs.Trigger>
@@ -367,7 +353,7 @@ type ContentProps = Readonly<{
 const Content = forwardRef(function Content(
   { i18n, pin, direction, pinsCount, ...forwardedProps }: ContentProps,
   ref: ForwardedRef<HTMLDivElement>
-): React.JSX.Element {
+): JSX.Element {
   const thumbnailUrl = useMemo(() => {
     return getThumbnailUrl(pin.message);
   }, [pin.message]);
@@ -385,7 +371,7 @@ const Content = forwardRef(function Content(
             'data-[state=active]:animate-enter data-[state=active]:animate-translate-y-[100%]',
             'data-[state=inactive]:animate-exit data-[state=inactive]:animate-translate-y-[-100%]',
             // Use !important to override Radix'x logic for preventing mount animations
-            // eslint-disable-next-line better-tailwindcss/no-restricted-classes
+            // oxlint-disable-next-line better-tailwindcss/no-restricted-classes
             'animate-duration-300!'
           ),
         direction === Direction.Backwards &&
@@ -393,7 +379,7 @@ const Content = forwardRef(function Content(
             'data-[state=active]:animate-enter data-[state=active]:animate-translate-y-[-100%]',
             'data-[state=inactive]:animate-exit data-[state=inactive]:animate-translate-y-[100%]',
             // Use !important to override Radix'x logic for preventing mount animations
-            // eslint-disable-next-line better-tailwindcss/no-restricted-classes
+            // oxlint-disable-next-line better-tailwindcss/no-restricted-classes
             'animate-duration-300!'
           )
       )}

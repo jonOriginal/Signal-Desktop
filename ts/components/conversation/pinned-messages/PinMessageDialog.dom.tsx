@@ -1,14 +1,14 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { MouseEvent } from 'react';
-import React, { memo, useCallback, useMemo, useState } from 'react';
-import { AxoDialog } from '../../../axo/AxoDialog.dom.js';
-import type { LocalizerType } from '../../../types/I18N.std.js';
-import { AxoRadioGroup } from '../../../axo/AxoRadioGroup.dom.js';
-import { DurationInSeconds } from '../../../util/durations/duration-in-seconds.std.js';
-import { strictAssert } from '../../../util/assert.std.js';
-import { AxoAlertDialog } from '../../../axo/AxoAlertDialog.dom.js';
-import { isInternalFeaturesEnabled } from '../../../util/isInternalFeaturesEnabled.dom.js';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { AxoDialog } from '../../../axo/AxoDialog.dom.tsx';
+import type { LocalizerType } from '../../../types/I18N.std.ts';
+import { AxoRadioGroup } from '../../../axo/AxoRadioGroup.dom.tsx';
+import { strictAssert } from '../../../util/assert.std.ts';
+import { AxoAlertDialog } from '../../../axo/AxoAlertDialog.dom.tsx';
+import { isInternalFeaturesEnabled } from '../../../util/isInternalFeaturesEnabled.dom.ts';
+import { DurationSecs } from '@signalapp/types';
 
 enum DurationOption {
   TIME_24_HOURS = 'TIME_24_HOURS',
@@ -18,12 +18,12 @@ enum DurationOption {
   DEBUG_10_SECONDS = 'DEBUG_10_SECONDS',
 }
 
-const DURATION_OPTIONS: Record<DurationOption, DurationInSeconds | null> = {
-  [DurationOption.TIME_24_HOURS]: DurationInSeconds.fromHours(24),
-  [DurationOption.TIME_7_DAYS]: DurationInSeconds.fromDays(7),
-  [DurationOption.TIME_30_DAYS]: DurationInSeconds.fromDays(30),
+const DURATION_OPTIONS: Record<DurationOption, DurationSecs | null> = {
+  [DurationOption.TIME_24_HOURS]: DurationSecs.fromHours(24),
+  [DurationOption.TIME_7_DAYS]: DurationSecs.fromDays(7),
+  [DurationOption.TIME_30_DAYS]: DurationSecs.fromDays(30),
   [DurationOption.FOREVER]: null,
-  [DurationOption.DEBUG_10_SECONDS]: DurationInSeconds.fromSeconds(10),
+  [DurationOption.DEBUG_10_SECONDS]: DurationSecs.fromSeconds(10),
 };
 
 enum Step {
@@ -48,7 +48,7 @@ export type PinMessageDialogProps = Readonly<{
   onSeenPinMessageDisappearingMessagesWarning: () => void;
   onPinnedMessageAdd: (
     messageId: string,
-    duration: DurationInSeconds | null
+    duration: DurationSecs | null
   ) => void;
 }>;
 
@@ -185,9 +185,7 @@ function PinMessageConfirmReplacePinDialog(props: {
           </AxoAlertDialog.Description>
         </AxoAlertDialog.Body>
         <AxoAlertDialog.Footer>
-          <AxoAlertDialog.Cancel>
-            {i18n('icu:PinMessageDialog--HasMaxPinnedMessages__Cancel')}
-          </AxoAlertDialog.Cancel>
+          <AxoAlertDialog.Cancel />
           <AxoAlertDialog.Action
             variant="primary"
             onClick={handleConfirmReplaceOldestPin}
@@ -233,7 +231,7 @@ function PinMessageSelectDurationDialog(props: {
           <AxoDialog.Title>
             {i18n('icu:PinMessageDialog__Title')}
           </AxoDialog.Title>
-          <AxoDialog.Close aria-label={i18n('icu:PinMessageDialog__Close')} />
+          <AxoDialog.Close />
         </AxoDialog.Header>
         <AxoDialog.Body>
           <AxoRadioGroup.Root

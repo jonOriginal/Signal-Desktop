@@ -1,23 +1,23 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { type ReactNode } from 'react';
+import { type ReactNode, type JSX } from 'react';
 
 import {
   LocalExportErrors,
   LocalBackupExportSteps,
-} from '../types/LocalExport.std.js';
-import { AxoDialog } from '../axo/AxoDialog.dom.js';
-import { AxoAlertDialog } from '../axo/AxoAlertDialog.dom.js';
+} from '../types/LocalExport.std.ts';
+import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoAlertDialog } from '../axo/AxoAlertDialog.dom.tsx';
 
-import type { LocalBackupExportWorkflowType } from '../types/LocalExport.std.js';
-import type { LocalizerType } from '../types/I18N.std.js';
-import { formatFileSize } from '../util/formatFileSize.std.js';
-import { ProgressBar } from './ProgressBar.dom.js';
-import { missingCaseError } from '../util/missingCaseError.std.js';
-import { tw } from '../axo/tw.dom.js';
-import { AxoSymbol } from '../axo/AxoSymbol.dom.js';
-import type { AxoSymbolIconName } from '../axo/_internal/AxoSymbolDefs.generated.std.js';
+import type { LocalBackupExportWorkflowType } from '../types/LocalExport.std.ts';
+import type { LocalizerType } from '../types/I18N.std.ts';
+import { formatFileSize } from '../util/formatFileSize.std.ts';
+import { ProgressBar } from './ProgressBar.dom.tsx';
+import { missingCaseError } from '../util/missingCaseError.std.ts';
+import { tw } from '../axo/tw.dom.tsx';
+import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
+import type { AxoSymbolIconName } from '../axo/_internal/AxoSymbolDefs.generated.std.ts';
 
 export type PropsType = {
   cancelWorkflow: () => void;
@@ -35,7 +35,7 @@ export function LocalBackupExportWorkflow({
   openFileInFolder,
   osName,
   workflow,
-}: PropsType): React.JSX.Element {
+}: PropsType): JSX.Element {
   const { step } = workflow;
 
   if (
@@ -62,7 +62,9 @@ export function LocalBackupExportWorkflow({
               isRTL={i18n.getLocaleDirection() === 'rtl'}
             />
           </div>
-          <div className={tw('mb-1.5 text-center type-body-small font-[600]')}>
+          <div
+            className={tw('mb-1.5 text-center type-body-small font-semibold')}
+          >
             {i18n('icu:PlaintextExport--ProgressDialog--Progress', {
               currentBytes: formatFileSize(progress.currentBytes),
               totalBytes: formatFileSize(progress.totalBytes),

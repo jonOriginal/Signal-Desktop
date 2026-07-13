@@ -6,50 +6,55 @@ import { batch } from 'react-redux';
 import { pick } from 'lodash';
 
 import type { MessageAttributesType } from '../model-types.d.ts';
-import { MessageModel } from '../models/messages.preload.js';
+import { MessageModel } from '../models/messages.preload.ts';
 
-import * as Errors from '../types/errors.std.js';
-import { createLogger } from '../logging/log.std.js';
+import * as Errors from '../types/errors.std.ts';
+import { createLogger } from '../logging/log.std.ts';
 
-import { MessageSender } from '../textsecure/SendMessage.preload.js';
-import { DataReader, DataWriter } from '../sql/Client.preload.js';
-import { deletePackReference } from '../types/Stickers.preload.js';
-import { isStory } from '../messages/helpers.std.js';
-import { isDirectConversation } from './whatTypeOfConversation.dom.js';
-import { getCallHistorySelector } from '../state/selectors/callHistory.std.js';
+import { MessageSender } from '../textsecure/SendMessage.preload.ts';
+import { DataReader, DataWriter } from '../sql/Client.preload.ts';
+import { deletePackReference } from '../types/Stickers.preload.ts';
+import { isStory } from '../messages/helpers.std.ts';
+import { isDirectConversation } from './whatTypeOfConversation.dom.ts';
+import { getCallHistorySelector } from '../state/selectors/callHistory.std.ts';
 import {
   DirectCallStatus,
   GroupCallStatus,
   AdhocCallStatus,
-} from '../types/CallDisposition.std.js';
-import { getMessageIdForLogging } from './idForLogging.preload.js';
-import { singleProtoJobQueue } from '../jobs/singleProtoJobQueue.preload.js';
-import { MINUTE } from './durations/index.std.js';
-import { drop } from './drop.std.js';
-import { hydrateStoryContext } from './hydrateStoryContext.preload.js';
-import { update as updateExpiringMessagesService } from '../services/expiringMessagesDeletion.preload.js';
-import { tapToViewMessagesDeletionService } from '../services/tapToViewMessagesDeletionService.preload.js';
-import { throttledUpdateBackupMediaDownloadProgress } from './updateBackupMediaDownloadProgress.preload.js';
-import { messageAttrsToPreserveAfterErase } from '../types/Message.std.js';
-import { cleanupAllMessageAttachmentFiles } from '../types/Message2.preload.js';
+} from '../types/CallDisposition.std.ts';
+import { getMessageIdForLogging } from './idForLogging.preload.ts';
+import { singleProtoJobQueue } from '../jobs/singleProtoJobQueue.preload.ts';
+import { MINUTE } from './durations/index.std.ts';
+import { drop } from './drop.std.ts';
+import {
+  getFilePathsReferencedByAttachment,
+  getFilePathsReferencedByMessage,
+} from './messageFilePaths.std.ts';
+import {
+  deleteDownloadFile,
+  maybeDeleteAttachmentFile,
+} from './migrations.preload.ts';
+import { hydrateStoryContext } from './hydrateStoryContext.preload.ts';
+import { update as updateExpiringMessagesService } from '../services/expiringMessagesDeletion.preload.ts';
+import { tapToViewMessagesDeletionService } from '../services/tapToViewMessagesDeletionService.preload.ts';
+import { throttledUpdateBackupMediaDownloadProgress } from './updateBackupMediaDownloadProgress.preload.ts';
+import {
+  getMessageAttrsToPreserveAfterErase,
+  type EraseMessageReasonType,
+} from '../types/Message.std.ts';
+import type { AttachmentType } from '../types/Attachment.std.ts';
 
 const log = createLogger('cleanup');
 
 export async function postSaveUpdates(): Promise<void> {
-  await updateExpiringMessagesService();
-  await tapToViewMessagesDeletionService.update();
+  updateExpiringMessagesService();
+  tapToViewMessagesDeletionService.update();
 }
 
 export async function eraseMessageContents(
   message: MessageModel,
-  reason:
-    | 'view-once-viewed'
-    | 'view-once-invalid'
-    | 'view-once-expired'
-    | 'view-once-sent'
-    | 'unsupported-message'
-    | 'delete-for-everyone',
-  additionalProperties = {}
+  reason: EraseMessageReasonType,
+  additionalProperties: Partial<MessageAttributesType> = {}
 ): Promise<void> {
   log.info(
     `Erasing data for message ${getMessageIdForLogging(message.attributes)}: ${reason}`
@@ -61,7 +66,7 @@ export async function eraseMessageContents(
   const originalAttributes = message.attributes;
   const preservedAttributes = pick(
     message.attributes,
-    ...messageAttrsToPreserveAfterErase
+    ...getMessageAttrsToPreserveAfterErase(reason)
   );
 
   message.resetAllAttributes({
@@ -143,7 +148,7 @@ export async function cleanupMessages(
 /** Removes a message from redux caches & MessageCache, but does NOT delete files on disk,
  * story replies, edit histories, attachments, etc. Should ONLY be called in conjunction
  * with deleteMessageData.  */
-export function cleanupMessageFromMemory(message: MessageAttributesType): void {
+function cleanupMessageFromMemory(message: MessageAttributesType): void {
   const { id, conversationId } = message;
 
   window.reduxActions?.conversations.messageDeleted(id, conversationId);
@@ -212,8 +217,10 @@ async function cleanupStoryReplies(
   }
 
   return cleanupStoryReplies(story, {
-    messageId: lastMessageId,
-    receivedAt: lastReceivedAt,
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    messageId: lastMessageId!,
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    receivedAt: lastReceivedAt!,
   });
 }
 
@@ -237,7 +244,7 @@ export async function cleanupFilesAndReferencesToMessage(
   }
 }
 
-export async function maybeDeleteCall(
+async function maybeDeleteCall(
   message: MessageAttributesType,
   {
     fromSync,
@@ -271,11 +278,36 @@ export async function maybeDeleteCall(
     return;
   }
 
-  if (!fromSync) {
+  if (!fromSync && window.ConversationController.doWeHaveOtherDevices()) {
     await singleProtoJobQueue.add(
       MessageSender.getDeleteCallEvent(callHistory)
     );
   }
   await DataWriter.markCallHistoryDeleted(callId);
   window.reduxActions.callHistory.removeCallHistory(callId);
+}
+
+export const cleanupAllMessageAttachmentFiles = async (
+  message: MessageAttributesType
+): Promise<void> => {
+  const { externalAttachments, externalDownloads } =
+    getFilePathsReferencedByMessage(message);
+  await Promise.all(
+    [...externalAttachments].map(attachmentPath =>
+      maybeDeleteAttachmentFile(attachmentPath)
+    )
+  );
+  await Promise.all(
+    [...externalDownloads].map(downloadPath => deleteDownloadFile(downloadPath))
+  );
+};
+
+export async function cleanupAttachmentFiles(
+  attachment: AttachmentType
+): Promise<void> {
+  const result = getFilePathsReferencedByAttachment(attachment);
+  await Promise.all(
+    [...result.externalAttachments].map(maybeDeleteAttachmentFile)
+  );
+  await Promise.all([...result.externalDownloads].map(deleteDownloadFile));
 }

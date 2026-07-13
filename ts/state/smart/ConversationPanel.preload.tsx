@@ -1,8 +1,8 @@
 // Copyright 2023 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { MutableRefObject } from 'react';
-import React, {
+import type { MutableRefObject, JSX } from 'react';
+import {
   forwardRef,
   memo,
   useCallback,
@@ -12,36 +12,38 @@ import React, {
 } from 'react';
 import { useSelector } from 'react-redux';
 import classNames from 'classnames';
-import type { PanelArgsType } from '../../types/Panels.std.js';
-import { createLogger } from '../../logging/log.std.js';
-import { PanelType } from '../../types/Panels.std.js';
-import { toLogFormat } from '../../types/errors.std.js';
-import { SmartAllMedia } from './AllMedia.preload.js';
-import { SmartAllMediaHeader } from './AllMediaHeader.preload.js';
-import { SmartChatColorPicker } from './ChatColorPicker.preload.js';
-import { SmartContactDetail } from './ContactDetail.preload.js';
-import { SmartConversationDetails } from './ConversationDetails.preload.js';
-import { SmartConversationNotificationsSettings } from './ConversationNotificationsSettings.preload.js';
-import { SmartGV1Members } from './GV1Members.preload.js';
-import { SmartGroupLinkManagement } from './GroupLinkManagement.preload.js';
-import { SmartGroupV2Permissions } from './GroupV2Permissions.preload.js';
-import { SmartMessageDetail } from './MessageDetail.preload.js';
-import { SmartPendingInvites } from './PendingInvites.preload.js';
-import { SmartStickerManager } from './StickerManager.preload.js';
-import { getConversationTitleForPanelType } from '../../util/getConversationTitleForPanelType.std.js';
-import { getIntl } from '../selectors/user.std.js';
+import type { PanelArgsType } from '../../types/Panels.std.ts';
+import { createLogger } from '../../logging/log.std.ts';
+import { PanelType } from '../../types/Panels.std.ts';
+import { toLogFormat } from '../../types/errors.std.ts';
+import { SmartAllMedia } from './AllMedia.preload.tsx';
+import { SmartAllMediaHeader } from './AllMediaHeader.preload.tsx';
+import { SmartChatColorPicker } from './ChatColorPicker.preload.tsx';
+import { SmartContactDetail } from './ContactDetail.preload.tsx';
+import { SmartConversationDetails } from './ConversationDetails.preload.tsx';
+import { SmartConversationNotificationsSettings } from './ConversationNotificationsSettings.preload.tsx';
+import { SmartGV1Members } from './GV1Members.preload.tsx';
+import { SmartGroupLinkManagement } from './GroupLinkManagement.preload.tsx';
+import { SmartGroupV2Permissions } from './GroupV2Permissions.preload.tsx';
+import { SmartMessageDetail } from './MessageDetail.preload.tsx';
+import { SmartPendingInvites } from './PendingInvites.preload.tsx';
+import { SmartStickerManager } from './StickerManager.preload.tsx';
+import { getConversationTitleForPanelType } from '../../util/getConversationTitleForPanelType.std.ts';
+import { getIntl } from '../selectors/user.std.ts';
 import {
   getPanelInformation,
   getWasPanelAnimated,
-} from '../selectors/nav.std.js';
-import { focusableSelector } from '../../util/focusableSelectors.std.js';
-import { missingCaseError } from '../../util/missingCaseError.std.js';
-import { useReducedMotion } from '../../hooks/useReducedMotion.dom.js';
-import { itemStorage } from '../../textsecure/Storage.preload.js';
-import { SmartPinnedMessagesPanel } from './PinnedMessagesPanel.preload.js';
-import { SmartMiniPlayer } from './MiniPlayer.preload.js';
-import { SmartGroupMemberLabelEditor } from './GroupMemberLabelEditor.preload.js';
-import { useNavActions } from '../ducks/nav.std.js';
+} from '../selectors/nav.std.ts';
+import { focusableSelector } from '../../util/focusableSelectors.std.ts';
+import { missingCaseError } from '../../util/missingCaseError.std.ts';
+import { useReducedMotion } from '../../hooks/useReducedMotion.dom.ts';
+import { itemStorage } from '../../textsecure/Storage.preload.ts';
+import { SmartPinnedMessagesPanel } from './PinnedMessagesPanel.preload.tsx';
+import { SmartMiniPlayer } from './MiniPlayer.preload.tsx';
+import { SmartGroupMemberLabelEditor } from './GroupMemberLabelEditor.preload.tsx';
+import { useNavActions } from '../ducks/nav.std.ts';
+import { ErrorBoundary } from '../../components/ErrorBoundary.dom.tsx';
+import { SmartStickerManagerHeader } from './StickerManagerHeader.preload.tsx';
 
 const log = createLogger('ConversationPanel');
 
@@ -242,6 +244,7 @@ export const ConversationPanel = memo(function ConversationPanel({
           <PanelContainer
             key={getPanelKey(prevPanel)}
             conversationId={conversationId}
+            isActive={false}
             panel={prevPanel}
             ref={animateRef}
           />
@@ -257,6 +260,7 @@ export const ConversationPanel = memo(function ConversationPanel({
           lastPanelDoneAnimating !== prevPanel &&
           prevPanel && (
             <PanelContainer
+              isActive={false}
               conversationId={conversationId}
               panel={prevPanel}
               key={getPanelKey(prevPanel)}
@@ -283,83 +287,98 @@ export const ConversationPanel = memo(function ConversationPanel({
 
 type PanelPropsType = {
   conversationId: string;
+  isActive: boolean;
   panel: PanelArgsType;
 };
 
-const PanelContainer = forwardRef<
-  HTMLDivElement,
-  PanelPropsType & { isActive?: boolean }
->(function PanelContainerInner(
-  { conversationId, isActive, panel },
-  ref
-): React.JSX.Element {
-  const i18n = useSelector(getIntl);
-  const { popPanelForConversation } = useNavActions();
-  const conversationTitle = getConversationTitleForPanelType(i18n, panel.type);
+const PanelContainer = forwardRef<HTMLDivElement, PanelPropsType>(
+  function PanelContainerInner(
+    { conversationId, isActive, panel },
+    ref
+  ): JSX.Element {
+    const i18n = useSelector(getIntl);
+    const { popPanelForConversation } = useNavActions();
+    const conversationTitle = getConversationTitleForPanelType(
+      i18n,
+      panel.type
+    );
 
-  let info: React.JSX.Element | undefined;
-  if (panel.type === PanelType.AllMedia) {
-    info = <SmartAllMediaHeader />;
-  } else if (conversationTitle != null) {
-    info = (
-      <div className="ConversationPanel__header__info">
-        <div className="ConversationPanel__header__info__title">
-          {conversationTitle}
+    let info: JSX.Element | undefined;
+    if (panel.type === PanelType.AllMedia) {
+      info = <SmartAllMediaHeader />;
+    } else if (panel.type === PanelType.StickerManager) {
+      info = <SmartStickerManagerHeader />;
+    } else if (conversationTitle != null) {
+      info = (
+        <div className="ConversationPanel__header__info">
+          <div className="ConversationPanel__header__info__title">
+            {conversationTitle}
+          </div>
+        </div>
+      );
+    }
+
+    const focusRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+      if (!isActive) {
+        return;
+      }
+
+      if (panel.type === PanelType.GroupMemberLabelEditor) {
+        return;
+      }
+
+      const focusNode = focusRef.current;
+      if (!focusNode) {
+        return;
+      }
+
+      const elements =
+        focusNode.querySelectorAll<HTMLElement>(focusableSelector);
+      if (!elements.length) {
+        return;
+      }
+      elements[0]?.focus();
+    }, [isActive, panel]);
+
+    return (
+      <div className="ConversationPanel" ref={ref}>
+        <div className="ConversationPanel__header">
+          <button
+            aria-label={i18n('icu:goBack')}
+            className="ConversationPanel__header__back-button"
+            onClick={popPanelForConversation}
+            type="button"
+          />
+          {info}
+        </div>
+        <SmartMiniPlayer shouldFlow />
+        <div
+          className={classNames(
+            'ConversationPanel__body',
+            panel.type !== PanelType.PinnedMessages &&
+              panel.type !== PanelType.AllMedia &&
+              panel.type !== PanelType.GroupMemberLabelEditor &&
+              'ConversationPanel__body--padding'
+          )}
+          ref={focusRef}
+        >
+          <PanelElement
+            isActive={isActive}
+            conversationId={conversationId}
+            panel={panel}
+          />
         </div>
       </div>
     );
   }
-
-  const focusRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!isActive) {
-      return;
-    }
-
-    const focusNode = focusRef.current;
-    if (!focusNode) {
-      return;
-    }
-
-    const elements = focusNode.querySelectorAll<HTMLElement>(focusableSelector);
-    if (!elements.length) {
-      return;
-    }
-    elements[0]?.focus();
-  }, [isActive, panel]);
-
-  return (
-    <div className="ConversationPanel" ref={ref}>
-      <div className="ConversationPanel__header">
-        <button
-          aria-label={i18n('icu:goBack')}
-          className="ConversationPanel__header__back-button"
-          onClick={popPanelForConversation}
-          type="button"
-        />
-        {info}
-      </div>
-      <SmartMiniPlayer shouldFlow />
-      <div
-        className={classNames(
-          'ConversationPanel__body',
-          panel.type !== PanelType.PinnedMessages &&
-            panel.type !== PanelType.AllMedia &&
-            panel.type !== PanelType.GroupMemberLabelEditor &&
-            'ConversationPanel__body--padding'
-        )}
-        ref={focusRef}
-      >
-        <PanelElement conversationId={conversationId} panel={panel} />
-      </div>
-    </div>
-  );
-});
+);
 
 function PanelElement({
   conversationId,
+  isActive,
   panel,
-}: PanelPropsType): React.JSX.Element | null {
+}: PanelPropsType): JSX.Element | null {
   if (panel.type === PanelType.AllMedia) {
     return <SmartAllMedia conversationId={conversationId} />;
   }
@@ -392,7 +411,12 @@ function PanelElement({
   }
 
   if (panel.type === PanelType.GroupMemberLabelEditor) {
-    return <SmartGroupMemberLabelEditor conversationId={conversationId} />;
+    return (
+      <SmartGroupMemberLabelEditor
+        conversationId={conversationId}
+        isActive={isActive}
+      />
+    );
   }
 
   if (panel.type === PanelType.GroupPermissions) {
@@ -420,7 +444,11 @@ function PanelElement({
   }
 
   if (panel.type === PanelType.StickerManager) {
-    return <SmartStickerManager />;
+    return (
+      <ErrorBoundary name="StickerManager">
+        <SmartStickerManager />
+      </ErrorBoundary>
+    );
   }
 
   log.warn(toLogFormat(missingCaseError(panel.type)));

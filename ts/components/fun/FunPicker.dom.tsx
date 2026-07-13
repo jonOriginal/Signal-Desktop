@@ -1,27 +1,27 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { ReactNode } from 'react';
-import React, { memo, useCallback, useEffect } from 'react';
+import type { ReactNode, JSX } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 import type { Placement } from 'react-aria';
 import { DialogTrigger } from 'react-aria-components';
 import { createKeybindingsHandler } from 'tinykeys';
-import { FunPickerTabKey } from './constants.dom.js';
-import { FunPopover } from './base/FunPopover.dom.js';
+import { FunPickerTabKey } from './constants.dom.tsx';
+import { FunPopover } from './base/FunPopover.dom.tsx';
 import {
   FunPickerTab,
   FunTabList,
   FunTabPanel,
   FunTabs,
-} from './base/FunTabs.dom.js';
-import type { FunEmojiSelection } from './panels/FunPanelEmojis.dom.js';
-import { FunPanelEmojis } from './panels/FunPanelEmojis.dom.js';
-import type { FunGifSelection } from './panels/FunPanelGifs.dom.js';
-import { FunPanelGifs } from './panels/FunPanelGifs.dom.js';
-import type { FunStickerSelection } from './panels/FunPanelStickers.dom.js';
-import { FunPanelStickers } from './panels/FunPanelStickers.dom.js';
-import { useFunContext } from './FunProvider.dom.js';
-import type { ThemeType } from '../../types/Util.std.js';
-import { FunErrorBoundary } from './base/FunErrorBoundary.dom.js';
+} from './base/FunTabs.dom.tsx';
+import type { FunEmojiSelection } from './panels/FunPanelEmojis.dom.tsx';
+import { FunPanelEmojis } from './panels/FunPanelEmojis.dom.tsx';
+import type { FunGifSelection } from './panels/FunPanelGifs.dom.tsx';
+import { FunPanelGifs } from './panels/FunPanelGifs.dom.tsx';
+import type { FunStickerSelection } from './panels/FunPanelStickers.dom.tsx';
+import { FunPanelStickers } from './panels/FunPanelStickers.dom.tsx';
+import { useFunContext } from './FunProvider.dom.tsx';
+import type { ThemeType } from '../../types/Util.std.ts';
+import { FunErrorBoundary } from './base/FunErrorBoundary.dom.tsx';
 
 /**
  * FunPicker
@@ -41,7 +41,7 @@ export type FunPickerProps = Readonly<{
 
 export const FunPicker = memo(function FunPicker(
   props: FunPickerProps
-): React.JSX.Element {
+): JSX.Element {
   const { onOpenChange } = props;
   const fun = useFunContext();
   const { i18n, onOpenChange: onFunOpenChange, onChangeTab } = fun;
@@ -61,15 +61,15 @@ export const FunPicker = memo(function FunPicker(
   useEffect(() => {
     const onKeyDown = createKeybindingsHandler({
       '$mod+Shift+J': () => {
-        onChangeTab(FunPickerTabKey.Emoji);
+        onChangeTab(FunPickerTabKey.EmojisTab);
         handleOpenChange(true);
       },
       '$mod+Shift+O': () => {
-        onChangeTab(FunPickerTabKey.Stickers);
+        onChangeTab(FunPickerTabKey.StickersTab);
         handleOpenChange(true);
       },
       '$mod+Shift+G': () => {
-        onChangeTab(FunPickerTabKey.Gifs);
+        onChangeTab(FunPickerTabKey.GifsTab);
         handleOpenChange(true);
       },
     });
@@ -85,17 +85,17 @@ export const FunPicker = memo(function FunPicker(
       <FunPopover placement={props.placement} theme={props.theme}>
         <FunTabs value={fun.tab} onChange={fun.onChangeTab}>
           <FunTabList>
-            <FunPickerTab id={FunPickerTabKey.Emoji}>
+            <FunPickerTab id={FunPickerTabKey.EmojisTab}>
               {i18n('icu:FunPicker__Tab--Emojis')}
             </FunPickerTab>
-            <FunPickerTab id={FunPickerTabKey.Stickers}>
+            <FunPickerTab id={FunPickerTabKey.StickersTab}>
               {i18n('icu:FunPicker__Tab--Stickers')}
             </FunPickerTab>
-            <FunPickerTab id={FunPickerTabKey.Gifs}>
+            <FunPickerTab id={FunPickerTabKey.GifsTab}>
               {i18n('icu:FunPicker__Tab--Gifs')}
             </FunPickerTab>
           </FunTabList>
-          <FunTabPanel id={FunPickerTabKey.Emoji}>
+          <FunTabPanel id={FunPickerTabKey.EmojisTab}>
             <FunErrorBoundary>
               <FunPanelEmojis
                 onSelectEmoji={props.onSelectEmoji}
@@ -105,7 +105,7 @@ export const FunPicker = memo(function FunPicker(
               />
             </FunErrorBoundary>
           </FunTabPanel>
-          <FunTabPanel id={FunPickerTabKey.Stickers}>
+          <FunTabPanel id={FunPickerTabKey.StickersTab}>
             <FunErrorBoundary>
               <FunPanelStickers
                 showTimeStickers={false}
@@ -115,7 +115,7 @@ export const FunPicker = memo(function FunPicker(
               />
             </FunErrorBoundary>
           </FunTabPanel>
-          <FunTabPanel id={FunPickerTabKey.Gifs}>
+          <FunTabPanel id={FunPickerTabKey.GifsTab}>
             <FunErrorBoundary>
               <FunPanelGifs
                 onSelectGif={props.onSelectGif}

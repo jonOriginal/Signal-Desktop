@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { decode } from 'blurhash';
-import * as Bytes from '../Bytes.std.js';
+import * as Bytes from '../Bytes.std.ts';
 
 const BITMAP_HEADER = new Uint8Array([
   // Header
@@ -47,15 +47,18 @@ const BITMAP_HEADER = new Uint8Array([
 
 const PIXEL_COUNT = 32 * 32;
 
-/* eslint-disable no-bitwise */
-function writeUInt32LE(bytes: Uint8Array, value: number, position: number) {
-  // eslint-disable-next-line no-param-reassign
+function writeUInt32LE(
+  bytes: Uint8Array<ArrayBuffer>,
+  value: number,
+  position: number
+) {
+  // oxlint-disable-next-line no-param-reassign, no-bitwise
   bytes[position + 0] = (value >>> 0) & 0xff;
-  // eslint-disable-next-line no-param-reassign
+  // oxlint-disable-next-line no-param-reassign, no-bitwise
   bytes[position + 1] = (value >>> 8) & 0xff;
-  // eslint-disable-next-line no-param-reassign
+  // oxlint-disable-next-line no-param-reassign, no-bitwise
   bytes[position + 2] = (value >>> 16) & 0xff;
-  // eslint-disable-next-line no-param-reassign
+  // oxlint-disable-next-line no-param-reassign, no-bitwise
   bytes[position + 3] = (value >>> 24) & 0xff;
 }
 
@@ -65,7 +68,8 @@ export function computeBlurHashUrl(
   desiredWidth = 1,
   desiredHeight = 1
 ): string {
-  const invAspect = Math.abs(desiredHeight) / (Math.abs(desiredWidth) + 1e-23);
+  const invAspect =
+    (Math.abs(desiredHeight) + 1e-23) / (Math.abs(desiredWidth) + 1e-23);
 
   // Calculate width and height that roughly satisfy the desired PIXEL_COUNT
   //
@@ -76,7 +80,9 @@ export function computeBlurHashUrl(
 
   // Width has to be a multiple of DWORD size (4) for BMP to render image
   // correctly
+  // oxlint-disable-next-line no-bitwise
   width >>= 2;
+  // oxlint-disable-next-line no-bitwise
   width <<= 2;
 
   // Give at least two pixels of width to show gradients
@@ -111,11 +117,13 @@ export function computeBlurHashUrl(
     i += 4, j += 3
   ) {
     // BMP uses BGR ordering
-    bitmap[j + 2] = rgba[i];
-    bitmap[j + 1] = rgba[i + 1];
-    bitmap[j] = rgba[i + 2];
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    bitmap[j + 2] = rgba[i]!;
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    bitmap[j + 1] = rgba[i + 1]!;
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    bitmap[j] = rgba[i + 2]!;
   }
 
   return `data:image/bmp;base64,${Bytes.toBase64(bitmap)}`;
 }
-/* eslint-enable no-bitwise */

@@ -1,29 +1,30 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { FC, ReactNode } from 'react';
-import React, { memo, useCallback, useMemo, useState } from 'react';
-import { AxoContextMenu } from '../../axo/AxoContextMenu.dom.js';
-import type { LocalizerType } from '../../types/I18N.std.js';
-import type { ConversationType } from '../../state/ducks/conversations.preload.js';
-import { isConversationUnread } from '../../util/isConversationUnread.std.js';
-import { drop } from '../../util/drop.std.js';
-import { DeleteMessagesConfirmationDialog } from '../DeleteMessagesConfirmationDialog.dom.js';
-import { getMuteOptions } from '../../util/getMuteOptions.std.js';
+import type { FC, ReactNode, JSX } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { AxoContextMenu } from '../../axo/AxoContextMenu.dom.tsx';
+import type { LocalizerType } from '../../types/I18N.std.ts';
+import type { ConversationType } from '../../state/ducks/conversations.preload.ts';
+import { isConversationUnread } from '../../util/isConversationUnread.std.ts';
+import { drop } from '../../util/drop.std.ts';
+import { DeleteMessagesConfirmationDialog } from '../DeleteMessagesConfirmationDialog.dom.tsx';
+import { getMuteOptions } from '../../util/getMuteOptions.std.ts';
 import {
   CHAT_FOLDER_DEFAULTS,
   ChatFolderType,
   isConversationInChatFolder,
-} from '../../types/ChatFolder.std.js';
+} from '../../types/ChatFolder.std.ts';
 import type {
   ChatFolderParams,
   ChatFolder,
   ChatFolderId,
-} from '../../types/ChatFolder.std.js';
-import { CurrentChatFolders } from '../../types/CurrentChatFolders.std.js';
-import { strictAssert } from '../../util/assert.std.js';
-import { UserText } from '../UserText.dom.js';
-import { isConversationMuted } from '../../util/isConversationMuted.std.js';
-import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.dom.js';
+} from '../../types/ChatFolder.std.ts';
+import { CurrentChatFolders } from '../../types/CurrentChatFolders.std.ts';
+import { strictAssert } from '../../util/assert.std.ts';
+import { UserText } from '../UserText.dom.tsx';
+import { isConversationMuted } from '../../util/isConversationMuted.std.ts';
+import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.dom.ts';
+import { canConversationOnlyBeMutedAlways } from '../../conversations/canConversationOnlyBeMutedAlways.dom.ts';
 
 export type ChatFolderToggleChat = (
   chatFolderId: ChatFolderId,
@@ -79,8 +80,10 @@ export const LeftPaneConversationListItemContextMenu: FC<LeftPaneConversationLis
     }, [selectedChatFolder]);
 
     const muteOptions = useMemo(() => {
-      return getMuteOptions(muteExpiresAt, i18n);
-    }, [muteExpiresAt, i18n]);
+      return getMuteOptions(muteExpiresAt, i18n, {
+        canOnlyBeMutedAlways: canConversationOnlyBeMutedAlways(conversation),
+      });
+    }, [muteExpiresAt, i18n, conversation]);
 
     const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] =
       useState(false);
@@ -301,7 +304,7 @@ function ContextMenuMuteNotificationsItem(props: {
   value: number;
   onSelect: (value: number) => void;
   children: ReactNode;
-}): React.JSX.Element {
+}): JSX.Element {
   const { value, onSelect } = props;
   const handleSelect = useCallback(() => {
     onSelect(value);
@@ -316,7 +319,7 @@ function ContextMenuMuteNotificationsItem(props: {
 function ContextMenuCopyTextItem(props: {
   value: string;
   children: ReactNode;
-}): React.JSX.Element {
+}): JSX.Element {
   const { value } = props;
 
   const handleSelect = useCallback((): void => {

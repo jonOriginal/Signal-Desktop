@@ -1,42 +1,42 @@
 // Copyright 2020 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import * as React from 'react';
+import { useContext, type JSX } from 'react';
 import { action } from '@storybook/addon-actions';
 import type { Meta } from '@storybook/react';
-import type { PropsType } from './LeftPane.dom.js';
-import { LeftPane } from './LeftPane.dom.js';
-import { CaptchaDialog } from './CaptchaDialog.dom.js';
-import { CrashReportDialog } from './CrashReportDialog.dom.js';
-import { ToastManager } from './ToastManager.dom.js';
-import type { PropsType as DialogNetworkStatusPropsType } from './DialogNetworkStatus.dom.js';
-import { DialogExpiredBuild } from './DialogExpiredBuild.dom.js';
-import { DialogNetworkStatus } from './DialogNetworkStatus.dom.js';
-import { DialogRelink } from './DialogRelink.dom.js';
-import type { PropsType as DialogUpdatePropsType } from './DialogUpdate.dom.js';
-import { DialogUpdate } from './DialogUpdate.dom.js';
-import { UnsupportedOSDialog } from './UnsupportedOSDialog.dom.js';
-import type { ConversationType } from '../state/ducks/conversations.preload.js';
-import { MessageSearchResult } from './conversationList/MessageSearchResult.dom.js';
-import { DurationInSeconds, DAY } from '../util/durations/index.std.js';
-import { LeftPaneMode } from '../types/leftPane.std.js';
-import { ThemeType } from '../types/Util.std.js';
+import type { PropsType } from './LeftPane.dom.tsx';
+import { LeftPane } from './LeftPane.dom.tsx';
+import { CaptchaDialog } from './CaptchaDialog.dom.tsx';
+import { CrashReportDialog } from './CrashReportDialog.dom.tsx';
+import { ToastManager } from './ToastManager.dom.tsx';
+import type { PropsType as DialogNetworkStatusPropsType } from './DialogNetworkStatus.dom.tsx';
+import { DialogExpiredBuild } from './DialogExpiredBuild.dom.tsx';
+import { DialogNetworkStatus } from './DialogNetworkStatus.dom.tsx';
+import { DialogRelink } from './DialogRelink.dom.tsx';
+import type { PropsType as DialogUpdatePropsType } from './DialogUpdate.dom.tsx';
+import { DialogUpdate } from './DialogUpdate.dom.tsx';
+import { UnsupportedOSDialog } from './UnsupportedOSDialog.dom.tsx';
+import type { ConversationType } from '../state/ducks/conversations.preload.ts';
+import { MessageSearchResult } from './conversationList/MessageSearchResult.dom.tsx';
+import { DurationInSeconds, DAY } from '../util/durations/index.std.ts';
+import { LeftPaneMode } from '../types/leftPane.std.ts';
+import { ThemeType } from '../types/Util.std.ts';
 import {
   getDefaultConversation,
   getDefaultGroupListItem,
-} from '../test-helpers/getDefaultConversation.std.js';
-import { DialogType } from '../types/Dialogs.std.js';
-import { SocketStatus } from '../types/SocketStatus.std.js';
-import { StorybookThemeContext } from '../../.storybook/StorybookThemeContext.std.js';
+} from '../test-helpers/getDefaultConversation.std.ts';
+import { DialogType } from '../types/Dialogs.std.ts';
+import { SocketStatus } from '../types/SocketStatus.std.ts';
+import { StorybookThemeContext } from '../../.storybook/StorybookThemeContext.std.ts';
 import {
   makeFakeLookupConversationWithoutServiceId,
   useUuidFetchState,
-} from '../test-helpers/fakeLookupConversationWithoutServiceId.std.js';
-import type { GroupListItemConversationType } from './conversationList/GroupListItem.dom.js';
-import { ServerAlert } from '../types/ServerAlert.std.js';
-import { LeftPaneChatFolders } from './leftPane/LeftPaneChatFolders.dom.js';
-import { LeftPaneConversationListItemContextMenu } from './leftPane/LeftPaneConversationListItemContextMenu.dom.js';
-import { CurrentChatFolders } from '../types/CurrentChatFolders.std.js';
+} from '../test-helpers/fakeLookupConversationWithoutServiceId.std.ts';
+import type { GroupListItemConversationType } from './conversationList/GroupListItem.dom.tsx';
+import { ServerAlert } from '../types/ServerAlert.std.ts';
+import { LeftPaneChatFolders } from './leftPane/LeftPaneChatFolders.dom.tsx';
+import { LeftPaneConversationListItemContextMenu } from './leftPane/LeftPaneConversationListItemContextMenu.dom.tsx';
+import { CurrentChatFolders } from '../types/CurrentChatFolders.std.ts';
 
 const { i18n } = window.SignalContext;
 
@@ -51,7 +51,7 @@ export default {
   args: {},
 } satisfies Meta<PropsType>;
 
-const defaultConversations: Array<ConversationType> = [
+const defaultConversations = [
   getDefaultConversation({
     id: 'fred-convo',
     title: 'Fred Willard',
@@ -61,7 +61,7 @@ const defaultConversations: Array<ConversationType> = [
     isSelected: true,
     title: 'Marc Barraca',
   }),
-];
+] as const satisfies Array<ConversationType>;
 
 const defaultSearchProps = {
   filterByUnread: false,
@@ -192,6 +192,7 @@ const useProps = (overrideProps: OverridePropsType = {}): PropsType => {
     hasPendingUpdate: false,
     i18n,
     isMacOS: false,
+    isMAS: false,
     isOnline: true,
     preferredWidthFromStorage: 320,
     challengeStatus: 'idle',
@@ -207,7 +208,6 @@ const useProps = (overrideProps: OverridePropsType = {}): PropsType => {
     usernameLinkCorrupted: false,
     isUpdateDownloaded,
     isNotificationProfileActive: false,
-    isChatFoldersEnabled: true,
     navTabsCollapsed: false,
 
     setChallengeStatus: action('setChallengeStatus'),
@@ -261,6 +261,9 @@ const useProps = (overrideProps: OverridePropsType = {}): PropsType => {
       <DialogRelink
         i18n={i18n}
         relinkDevice={action('relinkDevice')}
+        renderClearingDataView={action('renderClearingDataView')}
+        reregister={action('reregister')}
+        weArePrimaryDevice={false}
         {...props}
       />
     ),
@@ -291,8 +294,8 @@ const useProps = (overrideProps: OverridePropsType = {}): PropsType => {
       <CrashReportDialog
         i18n={i18n}
         isPending={false}
-        writeCrashReportsToLog={action('writeCrashReportsToLog')}
-        eraseCrashReports={action('eraseCrashReports')}
+        onSend={action('writeCrashReportsToLog')}
+        onErase={action('eraseCrashReports')}
       />
     ),
     renderExpiredBuildDialog: props => <DialogExpiredBuild {...props} />,
@@ -314,6 +317,7 @@ const useProps = (overrideProps: OverridePropsType = {}): PropsType => {
         onUndoArchive={action('onUndoArchive')}
         retryCallQualitySurvey={action('retryCallQualitySurvey')}
         openFileInFolder={action('openFileInFolder')}
+        saveHeapSnapshot={action('saveHeapSnapshot')}
         setDidResumeDonation={action('setDidResumeDonation')}
         toast={undefined}
         megaphone={undefined}
@@ -378,7 +382,7 @@ const useProps = (overrideProps: OverridePropsType = {}): PropsType => {
     showFindByPhoneNumber: action('showFindByPhoneNumber'),
     startSearch: action('startSearch'),
     startSettingGroupMetadata: action('startSettingGroupMetadata'),
-    theme: React.useContext(StorybookThemeContext),
+    theme: useContext(StorybookThemeContext),
     toggleComposeEditingAvatar: action('toggleComposeEditingAvatar'),
     toggleConversationInChooseMembers: action(
       'toggleConversationInChooseMembers'
@@ -393,7 +397,7 @@ const useProps = (overrideProps: OverridePropsType = {}): PropsType => {
   };
 };
 
-function LeftPaneInContainer(props: PropsType): React.JSX.Element {
+function LeftPaneInContainer(props: PropsType): JSX.Element {
   return (
     <div style={{ height: '600px' }}>
       <LeftPane {...props} />
@@ -401,7 +405,7 @@ function LeftPaneInContainer(props: PropsType): React.JSX.Element {
   );
 }
 
-export function InboxNoConversations(): React.JSX.Element {
+export function InboxNoConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -419,7 +423,7 @@ export function InboxNoConversations(): React.JSX.Element {
   );
 }
 
-export function InboxBackupMediaDownload(): React.JSX.Element {
+export function InboxBackupMediaDownload(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -429,7 +433,7 @@ export function InboxBackupMediaDownload(): React.JSX.Element {
   );
 }
 
-export function InboxBackupMediaDownloadWithDialogs(): React.JSX.Element {
+export function InboxBackupMediaDownloadWithDialogs(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -439,7 +443,7 @@ export function InboxBackupMediaDownloadWithDialogs(): React.JSX.Element {
     />
   );
 }
-export function InboxBackupMediaDownloadWithDialogsAndUnpinnedConversations(): React.JSX.Element {
+export function InboxBackupMediaDownloadWithDialogsAndUnpinnedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -458,7 +462,7 @@ export function InboxBackupMediaDownloadWithDialogsAndUnpinnedConversations(): R
     />
   );
 }
-export function InboxCriticalIdlePrimaryDeviceAlert(): React.JSX.Element {
+export function InboxCriticalIdlePrimaryDeviceAlert(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -471,7 +475,7 @@ export function InboxCriticalIdlePrimaryDeviceAlert(): React.JSX.Element {
     />
   );
 }
-export function InboxIdlePrimaryDeviceAlert(): React.JSX.Element {
+export function InboxIdlePrimaryDeviceAlert(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -484,7 +488,7 @@ export function InboxIdlePrimaryDeviceAlert(): React.JSX.Element {
     />
   );
 }
-export function InboxIdlePrimaryDeviceAlertNonDismissable(): React.JSX.Element {
+export function InboxIdlePrimaryDeviceAlertNonDismissable(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -499,7 +503,7 @@ export function InboxIdlePrimaryDeviceAlertNonDismissable(): React.JSX.Element {
   );
 }
 
-export function InboxUsernameCorrupted(): React.JSX.Element {
+export function InboxUsernameCorrupted(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -518,7 +522,7 @@ export function InboxUsernameCorrupted(): React.JSX.Element {
   );
 }
 
-export function InboxUsernameLinkCorrupted(): React.JSX.Element {
+export function InboxUsernameLinkCorrupted(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -537,7 +541,7 @@ export function InboxUsernameLinkCorrupted(): React.JSX.Element {
   );
 }
 
-export function InboxOnlyPinnedConversations(): React.JSX.Element {
+export function InboxOnlyPinnedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -555,7 +559,7 @@ export function InboxOnlyPinnedConversations(): React.JSX.Element {
   );
 }
 
-export function InboxOnlyNonPinnedConversations(): React.JSX.Element {
+export function InboxOnlyNonPinnedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -573,7 +577,7 @@ export function InboxOnlyNonPinnedConversations(): React.JSX.Element {
   );
 }
 
-export function InboxOnlyArchivedConversations(): React.JSX.Element {
+export function InboxOnlyArchivedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -591,7 +595,7 @@ export function InboxOnlyArchivedConversations(): React.JSX.Element {
   );
 }
 
-export function InboxPinnedAndArchivedConversations(): React.JSX.Element {
+export function InboxPinnedAndArchivedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -609,7 +613,7 @@ export function InboxPinnedAndArchivedConversations(): React.JSX.Element {
   );
 }
 
-export function InboxNonPinnedAndArchivedConversations(): React.JSX.Element {
+export function InboxNonPinnedAndArchivedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -627,7 +631,7 @@ export function InboxNonPinnedAndArchivedConversations(): React.JSX.Element {
   );
 }
 
-export function InboxPinnedAndNonPinnedConversations(): React.JSX.Element {
+export function InboxPinnedAndNonPinnedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -645,7 +649,7 @@ export function InboxPinnedAndNonPinnedConversations(): React.JSX.Element {
   );
 }
 
-export function InboxPinnedAndNonPinnedConversationsWithBackupDownload(): React.JSX.Element {
+export function InboxPinnedAndNonPinnedConversationsWithBackupDownload(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -664,11 +668,11 @@ export function InboxPinnedAndNonPinnedConversationsWithBackupDownload(): React.
   );
 }
 
-export function InboxPinnedNonPinnedAndArchivedConversations(): React.JSX.Element {
+export function InboxPinnedNonPinnedAndArchivedConversations(): JSX.Element {
   return <LeftPaneInContainer {...useProps()} />;
 }
 
-export function SearchNoResultsWhenSearchingEverywhere(): React.JSX.Element {
+export function SearchNoResultsWhenSearchingEverywhere(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -684,7 +688,7 @@ export function SearchNoResultsWhenSearchingEverywhere(): React.JSX.Element {
   );
 }
 
-export function SearchNoResultsWhenSearchingInAConversation(): React.JSX.Element {
+export function SearchNoResultsWhenSearchingInAConversation(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -701,7 +705,7 @@ export function SearchNoResultsWhenSearchingInAConversation(): React.JSX.Element
   );
 }
 
-export function SearchNoResultsUnreadFilterAndQuery(): React.JSX.Element {
+export function SearchNoResultsUnreadFilterAndQuery(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -718,7 +722,7 @@ export function SearchNoResultsUnreadFilterAndQuery(): React.JSX.Element {
   );
 }
 
-export function SearchNoResultsUnreadFilterWithoutQuery(): React.JSX.Element {
+export function SearchNoResultsUnreadFilterWithoutQuery(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -736,7 +740,7 @@ export function SearchNoResultsUnreadFilterWithoutQuery(): React.JSX.Element {
   );
 }
 
-export function SearchAllResultsLoading(): React.JSX.Element {
+export function SearchAllResultsLoading(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -752,7 +756,7 @@ export function SearchAllResultsLoading(): React.JSX.Element {
   );
 }
 
-export function SearchSomeResultsLoading(): React.JSX.Element {
+export function SearchSomeResultsLoading(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -771,7 +775,7 @@ export function SearchSomeResultsLoading(): React.JSX.Element {
   );
 }
 
-export function SearchHasConversationsAndContactsButNotMessages(): React.JSX.Element {
+export function SearchHasConversationsAndContactsButNotMessages(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -790,7 +794,7 @@ export function SearchHasConversationsAndContactsButNotMessages(): React.JSX.Ele
   );
 }
 
-export function SearchAllResults(): React.JSX.Element {
+export function SearchAllResults(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -815,7 +819,7 @@ export function SearchAllResults(): React.JSX.Element {
   );
 }
 
-export function SearchAllResultsUnreadFilter(): React.JSX.Element {
+export function SearchAllResultsUnreadFilter(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -838,7 +842,7 @@ export function SearchAllResultsUnreadFilter(): React.JSX.Element {
   );
 }
 
-export function ArchiveNoArchivedConversations(): React.JSX.Element {
+export function ArchiveNoArchivedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -855,7 +859,7 @@ export function ArchiveNoArchivedConversations(): React.JSX.Element {
   );
 }
 
-export function ArchiveArchivedConversations(): React.JSX.Element {
+export function ArchiveArchivedConversations(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -872,7 +876,7 @@ export function ArchiveArchivedConversations(): React.JSX.Element {
   );
 }
 
-export function ArchiveSearchingAConversation(): React.JSX.Element {
+export function ArchiveSearchingAConversation(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -889,7 +893,7 @@ export function ArchiveSearchingAConversation(): React.JSX.Element {
   );
 }
 
-export function ComposeNoResults(): React.JSX.Element {
+export function ComposeNoResults(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -907,7 +911,7 @@ export function ComposeNoResults(): React.JSX.Element {
   );
 }
 
-export function ComposeSomeContactsNoSearchTerm(): React.JSX.Element {
+export function ComposeSomeContactsNoSearchTerm(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -925,7 +929,7 @@ export function ComposeSomeContactsNoSearchTerm(): React.JSX.Element {
   );
 }
 
-export function ComposeSomeContactsWithASearchTerm(): React.JSX.Element {
+export function ComposeSomeContactsWithASearchTerm(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -943,7 +947,7 @@ export function ComposeSomeContactsWithASearchTerm(): React.JSX.Element {
   );
 }
 
-export function ComposeSomeGroupsNoSearchTerm(): React.JSX.Element {
+export function ComposeSomeGroupsNoSearchTerm(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -961,7 +965,7 @@ export function ComposeSomeGroupsNoSearchTerm(): React.JSX.Element {
   );
 }
 
-export function ComposeSomeGroupsWithSearchTerm(): React.JSX.Element {
+export function ComposeSomeGroupsWithSearchTerm(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -979,7 +983,7 @@ export function ComposeSomeGroupsWithSearchTerm(): React.JSX.Element {
   );
 }
 
-export function ComposeSearchIsValidUsername(): React.JSX.Element {
+export function ComposeSearchIsValidUsername(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -997,7 +1001,7 @@ export function ComposeSearchIsValidUsername(): React.JSX.Element {
   );
 }
 
-export function ComposeSearchIsValidUsernameFetchingUsername(): React.JSX.Element {
+export function ComposeSearchIsValidUsernameFetchingUsername(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1017,7 +1021,7 @@ export function ComposeSearchIsValidUsernameFetchingUsername(): React.JSX.Elemen
   );
 }
 
-export function ComposeSearchIsValidPhoneNumber(): React.JSX.Element {
+export function ComposeSearchIsValidPhoneNumber(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1035,7 +1039,7 @@ export function ComposeSearchIsValidPhoneNumber(): React.JSX.Element {
   );
 }
 
-export function ComposeSearchIsValidPhoneNumberFetchingPhoneNumber(): React.JSX.Element {
+export function ComposeSearchIsValidPhoneNumberFetchingPhoneNumber(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1055,7 +1059,7 @@ export function ComposeSearchIsValidPhoneNumberFetchingPhoneNumber(): React.JSX.
   );
 }
 
-export function ComposeAllKindsOfResultsNoSearchTerm(): React.JSX.Element {
+export function ComposeAllKindsOfResultsNoSearchTerm(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1073,7 +1077,7 @@ export function ComposeAllKindsOfResultsNoSearchTerm(): React.JSX.Element {
   );
 }
 
-export function ComposeAllKindsOfResultsWithASearchTerm(): React.JSX.Element {
+export function ComposeAllKindsOfResultsWithASearchTerm(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1091,7 +1095,7 @@ export function ComposeAllKindsOfResultsWithASearchTerm(): React.JSX.Element {
   );
 }
 
-export function CaptchaDialogRequired(): React.JSX.Element {
+export function CaptchaDialogRequired(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1111,7 +1115,7 @@ export function CaptchaDialogRequired(): React.JSX.Element {
   );
 }
 
-export function CaptchaDialogPending(): React.JSX.Element {
+export function CaptchaDialogPending(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1131,7 +1135,7 @@ export function CaptchaDialogPending(): React.JSX.Element {
   );
 }
 
-export function _CrashReportDialog(): React.JSX.Element {
+export function CrashReportDialogExample(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1151,7 +1155,7 @@ export function _CrashReportDialog(): React.JSX.Element {
   );
 }
 
-export function ChooseGroupMembersPartialPhoneNumber(): React.JSX.Element {
+export function ChooseGroupMembersPartialPhoneNumber(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1175,7 +1179,7 @@ export function ChooseGroupMembersPartialPhoneNumber(): React.JSX.Element {
   );
 }
 
-export function ChooseGroupMembersValidPhoneNumber(): React.JSX.Element {
+export function ChooseGroupMembersValidPhoneNumber(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1199,7 +1203,7 @@ export function ChooseGroupMembersValidPhoneNumber(): React.JSX.Element {
   );
 }
 
-export function ChooseGroupMembersUsername(): React.JSX.Element {
+export function ChooseGroupMembersUsername(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1223,7 +1227,7 @@ export function ChooseGroupMembersUsername(): React.JSX.Element {
   );
 }
 
-export function GroupMetadataNoTimer(): React.JSX.Element {
+export function GroupMetadataNoTimer(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1243,7 +1247,7 @@ export function GroupMetadataNoTimer(): React.JSX.Element {
   );
 }
 
-export function GroupMetadataRegularTimer(): React.JSX.Element {
+export function GroupMetadataRegularTimer(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1263,7 +1267,7 @@ export function GroupMetadataRegularTimer(): React.JSX.Element {
   );
 }
 
-export function GroupMetadataCustomTimer(): React.JSX.Element {
+export function GroupMetadataCustomTimer(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({
@@ -1283,7 +1287,7 @@ export function GroupMetadataCustomTimer(): React.JSX.Element {
   );
 }
 
-export function SearchingConversation(): React.JSX.Element {
+export function SearchingConversation(): JSX.Element {
   return (
     <LeftPaneInContainer
       {...useProps({

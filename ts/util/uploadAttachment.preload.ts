@@ -1,44 +1,48 @@
 // Copyright 2023 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import Long from 'long';
 import { createReadStream } from 'node:fs';
+import { LibSignalErrorBase, ErrorCode } from '@signalapp/libsignal-client';
 import type {
   AttachmentType,
   AttachmentWithHydratedData,
   UploadedAttachmentType,
-} from '../types/Attachment.std.js';
-import * as Bytes from '../Bytes.std.js';
-import { createLogger } from '../logging/log.std.js';
-import { MIMETypeToString, supportsIncrementalMac } from '../types/MIME.std.js';
-import { getRandomBytes } from '../Crypto.node.js';
-import { backupsService } from '../services/backups/index.preload.js';
-import { tusUpload } from './uploads/tusProtocol.node.js';
-import { defaultFileReader } from './uploads/uploads.node.js';
+} from '../types/Attachment.std.ts';
+import * as Bytes from '../Bytes.std.ts';
+import { createLogger } from '../logging/log.std.ts';
+import { MIMETypeToString, supportsIncrementalMac } from '../types/MIME.std.ts';
+import { getRandomBytes } from '../Crypto.node.ts';
+import { backupsService } from '../services/backups/index.preload.ts';
+import { tusUpload } from './uploads/tusProtocol.node.ts';
+import { defaultFileReader } from './uploads/uploads.node.ts';
 import {
   type AttachmentUploadFormResponseType,
   getAttachmentUploadForm,
   createFetchForAttachmentUpload,
   putEncryptedAttachment,
-} from '../textsecure/WebAPI.preload.js';
+  getConfig,
+} from '../textsecure/WebAPI.preload.ts';
+import { itemStorage } from '../textsecure/Storage.preload.ts';
 import {
   type EncryptedAttachmentV2,
   encryptAttachmentV2ToDisk,
   safeUnlink,
   type PlaintextSourceType,
-} from '../AttachmentCrypto.node.js';
-import { missingCaseError } from './missingCaseError.std.js';
-import { uuidToBytes } from './uuidToBytes.std.js';
-import { DAY, HOUR } from './durations/index.std.js';
-import { isImageAttachment, isVideoAttachment } from './Attachment.std.js';
-import { getAbsoluteAttachmentPath } from './migrations.preload.js';
-import { isMoreRecentThan } from './timestamp.std.js';
-import { DataReader } from '../sql/Client.preload.js';
+} from '../AttachmentCrypto.node.ts';
+import { missingCaseError } from './missingCaseError.std.ts';
+import { uuidToBytes } from './uuidToBytes.std.ts';
+import { DAY, HOUR } from './durations/index.std.ts';
+import { isImageAttachment, isVideoAttachment } from './Attachment.std.ts';
+import { getAbsoluteAttachmentPath } from './migrations.preload.ts';
+import { isMoreRecentThan } from './timestamp.std.ts';
+import { DataReader } from '../sql/Client.preload.ts';
 import {
   isValidAttachmentKey,
   isValidDigest,
   isValidPlaintextHash,
-} from '../types/Crypto.std.js';
-import type { ExistingAttachmentUploadData } from '../sql/Interface.std.js';
+} from '../types/Crypto.std.ts';
+import type { ExistingAttachmentUploadData } from '../sql/Interface.std.ts';
+import { maybeRefreshRemoteConfig } from '../RemoteConfig.dom.ts';
+import { assertDev } from './assert.std.ts';
 
 const CDNS_SUPPORTING_TUS = new Set([3]);
 const MAX_DURATION_TO_REUSE_ATTACHMENT_CDN_POINTER = 3 * DAY;
@@ -48,12 +52,12 @@ const log = createLogger('uploadAttachment');
 export async function uploadAttachment(
   attachment: AttachmentWithHydratedData
 ): Promise<UploadedAttachmentType> {
-  let keys: Uint8Array;
+  let keys: Uint8Array<ArrayBuffer>;
   let cdnKey: string;
   let cdnNumber: number;
-  let digest: Uint8Array;
+  let digest: Uint8Array<ArrayBuffer>;
   let plaintextHash: string;
-  let incrementalMac: Uint8Array | undefined;
+  let incrementalMac: Uint8Array<ArrayBuffer> | undefined;
   let chunkSize: number | undefined;
   let uploadTimestamp: number;
 
@@ -94,30 +98,43 @@ export async function uploadAttachment(
 
   const { blurHash, caption, clientUuid, flags, height, width } = attachment;
 
-  // Strip filename only for renderable visual media to prevent metadata leakage
-  const shouldStripFilename =
-    isImageAttachment(attachment) || isVideoAttachment(attachment);
-  const fileName = shouldStripFilename ? undefined : attachment.fileName;
+  let { fileName } = attachment;
+  if (isImageAttachment(attachment) || isVideoAttachment(attachment)) {
+    assertDev(
+      fileName == null,
+      'Filename should be stripped from visual attachments'
+    );
+
+    if (fileName != null) {
+      // We continue to strip the filename here just in case there are old draft
+      // attachments without filenames stripped
+      fileName = undefined;
+    }
+  }
 
   return {
-    cdnKey,
+    attachmentIdentifier: {
+      cdnKey,
+    },
     cdnNumber,
-    clientUuid: clientUuid ? uuidToBytes(clientUuid) : undefined,
+    clientUuid: clientUuid ? uuidToBytes(clientUuid) : null,
     key: keys,
     size: attachment.data.byteLength,
     digest,
     plaintextHash,
-    incrementalMac,
-    chunkSize,
-    uploadTimestamp: Long.fromNumber(uploadTimestamp),
+    incrementalMac: incrementalMac ?? null,
+    chunkSize: chunkSize ?? null,
+    uploadTimestamp: BigInt(uploadTimestamp),
 
     contentType: MIMETypeToString(attachment.contentType),
-    fileName,
-    flags,
-    width,
-    height,
-    caption,
-    blurHash,
+    fileName: fileName ?? null,
+    flags: flags ?? null,
+    width: width ?? null,
+    height: height ?? null,
+    caption: caption ?? null,
+    blurHash: blurHash ?? null,
+
+    thumbnail: null,
   };
 }
 
@@ -127,7 +144,7 @@ export async function encryptAndUploadAttachment({
   plaintext,
   uploadType,
 }: {
-  keys: Uint8Array;
+  keys: Uint8Array<ArrayBuffer>;
   needIncrementalMac: boolean;
   plaintext: PlaintextSourceType;
   uploadType: 'standard' | 'backup';
@@ -140,17 +157,6 @@ export async function encryptAndUploadAttachment({
   let absoluteCiphertextPath: string | undefined;
 
   try {
-    switch (uploadType) {
-      case 'standard':
-        uploadForm = await getAttachmentUploadForm();
-        break;
-      case 'backup':
-        uploadForm = await backupsService.api.getMediaUploadForm();
-        break;
-      default:
-        throw missingCaseError(uploadType);
-    }
-
     const encrypted = await encryptAttachmentV2ToDisk({
       getAbsoluteAttachmentPath,
       keys,
@@ -160,6 +166,19 @@ export async function encryptAndUploadAttachment({
 
     absoluteCiphertextPath = getAbsoluteAttachmentPath(encrypted.path);
 
+    switch (uploadType) {
+      case 'standard':
+        uploadForm = await getAttachmentUploadForm({
+          uploadSize: encrypted.ciphertextSize,
+        });
+        break;
+      case 'backup':
+        uploadForm = await backupsService.api.getMediaUploadForm();
+        break;
+      default:
+        throw missingCaseError(uploadType);
+    }
+
     await uploadFile({
       absoluteCiphertextPath,
       ciphertextFileSize: encrypted.ciphertextSize,
@@ -167,6 +186,17 @@ export async function encryptAndUploadAttachment({
     });
 
     return { cdnKey: uploadForm.key, cdnNumber: uploadForm.cdn, encrypted };
+  } catch (error) {
+    if (
+      error instanceof LibSignalErrorBase &&
+      error.code === ErrorCode.UploadTooLarge
+    ) {
+      await maybeRefreshRemoteConfig({
+        getConfig,
+        storage: itemStorage,
+      });
+    }
+    throw error;
   } finally {
     if (absoluteCiphertextPath) {
       await safeUnlink(absoluteCiphertextPath);

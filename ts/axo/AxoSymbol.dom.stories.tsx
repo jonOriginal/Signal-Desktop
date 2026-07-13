@@ -1,15 +1,15 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import React, { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, type JSX } from 'react';
 import type { Meta } from '@storybook/react';
 import { Direction } from 'radix-ui';
 import Fuse from 'fuse.js';
-import { AxoSymbol } from './AxoSymbol.dom.js';
-import { tw } from './tw.dom.js';
+import { AxoSymbol } from './AxoSymbol.dom.tsx';
+import { tw } from './tw.dom.tsx';
 import {
   _getAllAxoSymbolInlineGlyphNames,
   getAxoSymbolInlineGlyph,
-} from './_internal/AxoSymbolDefs.generated.std.js';
+} from './_internal/AxoSymbolDefs.generated.std.ts';
 
 export default {
   title: 'Axo/AxoSymbol',
@@ -22,7 +22,7 @@ const fuse = new Fuse(allAxoSymbolNames);
 
 const SymbolInfo = memo(function SymbolInfo(props: {
   symbolName: AxoSymbol.InlineGlyphName;
-}): React.JSX.Element {
+}): JSX.Element {
   const ltr = getAxoSymbolInlineGlyph(props.symbolName, 'ltr');
   const rtl = getAxoSymbolInlineGlyph(props.symbolName, 'rtl');
 
@@ -81,7 +81,7 @@ const SymbolInfo = memo(function SymbolInfo(props: {
   );
 });
 
-export function All(): React.JSX.Element {
+export function All(): JSX.Element {
   const [input, setInput] = useState('');
 
   const results = useMemo(() => {
@@ -100,6 +100,8 @@ export function All(): React.JSX.Element {
           'sticky top-4 mb-3 bg-elevated-background-primary p-4 shadow-elevation-2'
         )}
       >
+        {/* FIXME */}
+        {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label */}
         <input
           type="search"
           value={input}
@@ -108,7 +110,7 @@ export function All(): React.JSX.Element {
             setInput(event.currentTarget.value);
           }}
           className={tw(
-            'w-full rounded bg-elevated-background-secondary p-3 type-body-medium'
+            'w-full rounded-sm bg-elevated-background-secondary p-3 type-body-medium'
           )}
         />
       </div>

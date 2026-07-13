@@ -6,21 +6,21 @@ import {
   type PrimaryDevice,
   Proto,
   StorageState,
+  EMPTY_DATA_MESSAGE,
 } from '@signalapp/mock-server';
 import createDebug from 'debug';
-import Long from 'long';
 
-import * as durations from '../../util/durations/index.std.js';
-import { uuidToBytes } from '../../util/uuidToBytes.std.js';
-import { MY_STORY_ID } from '../../types/Stories.std.js';
-import { Bootstrap } from '../bootstrap.node.js';
-import type { App } from '../bootstrap.node.js';
+import * as durations from '../../util/durations/index.std.ts';
+import { uuidToBytes } from '../../util/uuidToBytes.std.ts';
+import { MY_STORY_ID } from '../../types/Stories.std.ts';
+import { Bootstrap } from '../bootstrap.node.ts';
+import type { App } from '../bootstrap.node.ts';
 import {
   expectSystemMessages,
   typeIntoInput,
   waitForEnabledComposer,
   waitForNonProfileKeyUpdateMessage,
-} from '../helpers.node.js';
+} from '../helpers.node.ts';
 
 export const debug = createDebug('mock:test:messaging');
 
@@ -71,6 +71,8 @@ describe('messaging/expireTimerVersion', function (this: Mocha.Suite) {
           identifier: uuidToBytes(MY_STORY_ID),
           isBlockList: true,
           name: MY_STORY_ID,
+          deletedAtTimestamp: null,
+          recipientServiceIdsBinary: null,
         },
       },
     });
@@ -173,7 +175,7 @@ describe('messaging/expireTimerVersion', function (this: Mocha.Suite) {
     const testName =
       `sets correct version after ${scenario.name}, ` +
       `theyFirst=${scenario.theyFirst}`;
-    // eslint-disable-next-line no-loop-func
+    // oxlint-disable-next-line no-loop-func
     it(testName, async () => {
       const { phone, desktop } = bootstrap;
 
@@ -181,24 +183,45 @@ describe('messaging/expireTimerVersion', function (this: Mocha.Suite) {
         debug('Send a sync message');
         const timestamp = bootstrap.getTimestamp();
         const destinationServiceIdBinary = stranger.device.aciBinary;
-        const content = {
-          syncMessage: {
-            sent: {
-              destinationServiceIdBinary,
-              timestamp: Long.fromNumber(timestamp),
-              message: {
-                body: 'request',
-                timestamp: Long.fromNumber(timestamp),
-                expireTimer: scenario.ourTimer,
-                expireTimerVersion: scenario.ourVersion,
-              },
-              unidentifiedStatus: [
-                {
+        const content: Proto.Content.Params = {
+          content: {
+            syncMessage: {
+              content: {
+                sent: {
                   destinationServiceIdBinary,
+                  timestamp: BigInt(timestamp),
+                  message: {
+                    ...EMPTY_DATA_MESSAGE,
+                    body: 'request',
+                    timestamp: BigInt(timestamp),
+                    expireTimer: scenario.ourTimer,
+                    expireTimerVersion: scenario.ourVersion,
+                  },
+                  unidentifiedStatus: [
+                    {
+                      destinationServiceIdBinary,
+                      unidentified: null,
+                      destinationPniIdentityKey: null,
+                      destinationServiceId: null,
+                    },
+                  ],
+                  destinationE164: null,
+                  expirationStartTimestamp: null,
+                  isRecipientUpdate: null,
+                  storyMessage: null,
+                  storyMessageRecipients: null,
+                  editMessage: null,
+                  destinationServiceId: null,
                 },
-              ],
+              },
+              read: null,
+              stickerPackOperation: null,
+              viewed: null,
+              padding: null,
             },
           },
+          pniSignatureMessage: null,
+          senderKeyDistributionMessage: null,
         };
         const sendOptions = {
           timestamp,
@@ -209,13 +232,18 @@ describe('messaging/expireTimerVersion', function (this: Mocha.Suite) {
       const sendResponse = async () => {
         debug('Send a response message');
         const timestamp = bootstrap.getTimestamp();
-        const content = {
-          dataMessage: {
-            body: 'response',
-            timestamp: Long.fromNumber(timestamp),
-            expireTimer: scenario.theirTimer,
-            expireTimerVersion: scenario.theirVersion,
+        const content: Proto.Content.Params = {
+          content: {
+            dataMessage: {
+              ...EMPTY_DATA_MESSAGE,
+              body: 'response',
+              timestamp: BigInt(timestamp),
+              expireTimer: scenario.theirTimer,
+              expireTimerVersion: scenario.theirVersion,
+            },
           },
+          pniSignatureMessage: null,
+          senderKeyDistributionMessage: null,
         };
         const sendOptions = {
           timestamp,
@@ -245,7 +273,7 @@ describe('messaging/expireTimerVersion', function (this: Mocha.Suite) {
 
       await expectSystemMessages(window, scenario.systemMessages);
 
-      await window.locator('.module-conversation-hero').waitFor();
+      await window.getByTestId('conversation-hero').waitFor();
 
       debug('Send message to merged contact');
       {
@@ -276,7 +304,7 @@ describe('messaging/expireTimerVersion', function (this: Mocha.Suite) {
       )
       .click();
 
-    await window.locator('.module-conversation-hero').waitFor();
+    await window.getByTestId('conversation-hero').waitFor();
 
     const conversationStack = window.locator('.Inbox__conversation-stack');
 

@@ -1,12 +1,23 @@
 // Copyright 2019 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import * as React from 'react';
-import { StickerManagerPackRow } from './StickerManagerPackRow.dom.js';
-import { StickerPreviewModal } from './StickerPreviewModal.dom.js';
-import type { LocalizerType } from '../../types/Util.std.js';
-import type { StickerPackType } from '../../state/ducks/stickers.preload.js';
-import { Tabs } from '../Tabs.dom.js';
+import {
+  memo,
+  createRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type JSX,
+} from 'react';
+import { StickerManagerPackRow } from './StickerManagerPackRow.dom.tsx';
+import { StickerPreviewModal } from './StickerPreviewModal.dom.tsx';
+import type { LocalizerType } from '../../types/Util.std.ts';
+import type { StickerPackType } from '../../state/ducks/stickers.preload.ts';
+import type { ShowToastAction } from '../../state/ducks/toast.preload.ts';
+import type { StickerManagerTabType } from '../../types/Stickers.preload.ts';
+import { tw } from '../../axo/tw.dom.tsx';
+import { AxoButton } from '../../axo/AxoButton.dom.tsx';
 
 export type OwnProps = {
   readonly blessedPacks: ReadonlyArray<StickerPackType>;
@@ -25,6 +36,9 @@ export type OwnProps = {
   readonly installedPacks: ReadonlyArray<StickerPackType>;
   readonly knownPacks?: ReadonlyArray<StickerPackType>;
   readonly receivedPacks: ReadonlyArray<StickerPackType>;
+  readonly tab: StickerManagerTabType;
+  readonly setTab: (value: StickerManagerTabType) => void;
+  readonly showToast: ShowToastAction;
   readonly uninstallStickerPack: (
     packId: string,
     packKey: string,
@@ -34,12 +48,7 @@ export type OwnProps = {
 
 export type Props = OwnProps;
 
-enum TabViews {
-  Available = 'Available',
-  Installed = 'Installed',
-}
-
-export const StickerManager = React.memo(function StickerManagerInner({
+export const StickerManager = memo(function StickerManagerInner({
   blessedPacks,
   closeStickerPackPreview,
   downloadStickerPack,
@@ -48,13 +57,15 @@ export const StickerManager = React.memo(function StickerManagerInner({
   installedPacks,
   knownPacks,
   receivedPacks,
+  tab,
+  setTab,
+  showToast,
   uninstallStickerPack,
 }: Props) {
-  const focusRef = React.createRef<HTMLDivElement>();
-  const [packToPreview, setPackToPreview] =
-    React.useState<StickerPackType | null>(null);
+  const focusRef = createRef<HTMLDivElement>();
+  const [packIdToPreview, setPackIdToPreview] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!knownPacks) {
       return;
     }
@@ -70,20 +81,58 @@ export const StickerManager = React.memo(function StickerManagerInner({
       }
     });
     // We only want to attempt downloads on initial load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const clearPackToPreview = React.useCallback(() => {
-    setPackToPreview(null);
-  }, [setPackToPreview]);
+  const clearPackToPreview = useCallback(() => {
+    setPackIdToPreview(null);
+  }, [setPackIdToPreview]);
 
-  const previewPack = React.useCallback((pack: StickerPackType) => {
-    setPackToPreview(pack);
+  const previewPack = useCallback((packId: string) => {
+    setPackIdToPreview(packId);
   }, []);
+
+  const renderStickerPackRow = useCallback(
+    (pack: StickerPackType): JSX.Element => (
+      <StickerManagerPackRow
+        key={pack.id}
+        pack={pack}
+        i18n={i18n}
+        onClickPreview={previewPack}
+        installStickerPack={installStickerPack}
+        uninstallStickerPack={uninstallStickerPack}
+      />
+    ),
+    [i18n, installStickerPack, previewPack, uninstallStickerPack]
+  );
+
+  const setTabAll = useCallback(() => setTab('all'), [setTab]);
+
+  const allPacks = useMemo(() => {
+    const packsMap = new Map<string, StickerPackType>();
+    const packsList = [
+      ...blessedPacks,
+      ...installedPacks,
+      ...(knownPacks ?? []),
+      ...receivedPacks,
+    ];
+    packsList.forEach(pack => {
+      if (packsMap.get(pack.id)) {
+        return;
+      }
+
+      packsMap.set(pack.id, pack);
+    });
+    return packsMap;
+  }, [blessedPacks, installedPacks, knownPacks, receivedPacks]);
+
+  const packToPreview = useMemo(() => {
+    return packIdToPreview ? allPacks.get(packIdToPreview) : undefined;
+  }, [allPacks, packIdToPreview]);
 
   return (
     <>
-      {packToPreview ? (
+      {packIdToPreview ? (
         <StickerPreviewModal
           closeStickerPackPreview={closeStickerPackPreview}
           downloadStickerPack={downloadStickerPack}
@@ -92,98 +141,87 @@ export const StickerManager = React.memo(function StickerManagerInner({
           onClose={clearPackToPreview}
           pack={packToPreview}
           uninstallStickerPack={uninstallStickerPack}
+          showToast={showToast}
         />
       ) : null}
       <div
-        className="module-sticker-manager"
+        className={tw('m-auto max-w-152 px-4 py-0 outline-none')}
         data-testid="StickerManager"
         tabIndex={-1}
         ref={focusRef}
       >
-        <Tabs
-          initialSelectedTab={TabViews.Available}
-          tabs={[
-            {
-              id: TabViews.Available,
-              label: i18n('icu:stickers--StickerManager--Available'),
-            },
-            {
-              id: TabViews.Installed,
-              label: i18n('icu:stickers--StickerManager--InstalledPacks'),
-            },
-          ]}
-        >
-          {({ selectedTab }) => (
-            <>
-              {selectedTab === TabViews.Available && (
-                <>
-                  <h2 className="module-sticker-manager__text module-sticker-manager__text--heading">
-                    {i18n('icu:stickers--StickerManager--BlessedPacks')}
-                  </h2>
-                  {blessedPacks.length > 0 ? (
-                    blessedPacks.map(pack => (
-                      <StickerManagerPackRow
-                        key={pack.id}
-                        pack={pack}
-                        i18n={i18n}
-                        onClickPreview={previewPack}
-                        installStickerPack={installStickerPack}
-                        uninstallStickerPack={uninstallStickerPack}
-                      />
-                    ))
-                  ) : (
-                    <div className="module-sticker-manager__empty">
-                      {i18n(
-                        'icu:stickers--StickerManager--BlessedPacks--Empty'
-                      )}
-                    </div>
-                  )}
-
-                  <h2 className="module-sticker-manager__text module-sticker-manager__text--heading">
-                    {i18n('icu:stickers--StickerManager--ReceivedPacks')}
-                  </h2>
-                  {receivedPacks.length > 0 ? (
-                    receivedPacks.map(pack => (
-                      <StickerManagerPackRow
-                        key={pack.id}
-                        pack={pack}
-                        i18n={i18n}
-                        onClickPreview={previewPack}
-                        installStickerPack={installStickerPack}
-                        uninstallStickerPack={uninstallStickerPack}
-                      />
-                    ))
-                  ) : (
-                    <div className="module-sticker-manager__empty">
-                      {i18n(
-                        'icu:stickers--StickerManager--ReceivedPacks--Empty'
-                      )}
-                    </div>
-                  )}
-                </>
+        {tab === 'all' && (
+          <>
+            <h2
+              className={tw(
+                'mx-2 my-1 type-body-medium font-semibold text-label-primary select-none'
               )}
-              {selectedTab === TabViews.Installed &&
-                (installedPacks.length > 0 ? (
-                  installedPacks.map(pack => (
-                    <StickerManagerPackRow
-                      key={pack.id}
-                      pack={pack}
-                      i18n={i18n}
-                      onClickPreview={previewPack}
-                      installStickerPack={installStickerPack}
-                      uninstallStickerPack={uninstallStickerPack}
-                    />
-                  ))
-                ) : (
-                  <div className="module-sticker-manager__empty">
-                    {i18n(
-                      'icu:stickers--StickerManager--InstalledPacks--Empty'
-                    )}
-                  </div>
-                ))}
-            </>
-          )}
-        </Tabs>
+            >
+              {i18n('icu:stickers--StickerManager--BlessedPacks')}
+            </h2>
+            {blessedPacks.length > 0 ? (
+              blessedPacks.map(pack => renderStickerPackRow(pack))
+            ) : (
+              <p
+                className={tw(
+                  'mx-2 mb-1 type-body-small text-label-secondary select-none'
+                )}
+              >
+                {i18n('icu:stickers--StickerManager--BlessedPacks--Empty')}
+              </p>
+            )}
+            <div className={tw('mb-4')} />
+
+            {receivedPacks.length > 0 && (
+              <>
+                <h2
+                  className={tw(
+                    'mx-2 mt-2 mb-0.5 type-body-medium font-semibold text-label-primary select-none'
+                  )}
+                >
+                  {i18n('icu:stickers--StickerManager--ReceivedPacks2')}
+                </h2>
+                <p
+                  className={tw(
+                    'mx-2 mb-1 type-body-small text-label-secondary select-none'
+                  )}
+                >
+                  {i18n(
+                    'icu:stickers--StickerManager--ReceivedPacksDescription'
+                  )}
+                </p>
+                {receivedPacks.map(pack => renderStickerPackRow(pack))}
+              </>
+            )}
+          </>
+        )}
+        {tab === 'my-stickers' &&
+          (installedPacks.length > 0 ? (
+            installedPacks.map(pack => renderStickerPackRow(pack))
+          ) : (
+            <div
+              className={tw(
+                'm-auto grid min-h-screen place-items-center text-center'
+              )}
+            >
+              <div className={tw('max-w-60')}>
+                <div
+                  className={tw('mb-4 type-body-medium text-label-secondary')}
+                >
+                  {i18n('icu:stickers--StickerManager--MyStickers--None')}
+                </div>
+                <div>
+                  <AxoButton.Root
+                    variant="secondary"
+                    size="md"
+                    onClick={setTabAll}
+                  >
+                    {i18n('icu:stickers--StickerManager--AddStickers')}
+                  </AxoButton.Root>
+                </div>
+              </div>
+            </div>
+          ))}
       </div>
     </>
   );

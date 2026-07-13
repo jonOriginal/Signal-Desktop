@@ -1,30 +1,33 @@
 // Copyright 2026 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { useSelector } from 'react-redux';
 
-import { GroupMemberLabelEditor } from '../../components/conversation/conversation-details/GroupMemberLabelEditor.dom.js';
+import { GroupMemberLabelEditor } from '../../components/conversation/conversation-details/GroupMemberLabelEditor.dom.tsx';
 import {
   getCachedConversationMemberColorsSelector,
   getConversationSelector,
-} from '../selectors/conversations.dom.js';
-import { getIntl, getTheme, getUser } from '../selectors/user.std.js';
-import { useConversationsActions } from '../ducks/conversations.preload.js';
-import { createLogger } from '../../logging/log.std.js';
-import { getPreferredBadgeSelector } from '../selectors/badges.preload.js';
-import { isNotNil } from '../../util/isNotNil.std.js';
-import { useNavActions } from '../ducks/nav.std.js';
+} from '../selectors/conversations.dom.ts';
+import { getIntl, getTheme, getUser } from '../selectors/user.std.ts';
+import { useConversationsActions } from '../ducks/conversations.preload.ts';
+import { createLogger } from '../../logging/log.std.ts';
+import { getPreferredBadgeSelector } from '../selectors/badges.preload.ts';
+import { isNotNil } from '../../util/isNotNil.std.ts';
+import { useNavActions } from '../ducks/nav.std.ts';
+import { getCanAddLabel } from '../../types/GroupMemberLabels.std.ts';
 
 const log = createLogger('SmartGroupMemberLabelEditor');
 
 export type SmartGroupMemberLabelEditorProps = Readonly<{
   conversationId: string;
+  isActive: boolean;
 }>;
 
 export const SmartGroupMemberLabelEditor = memo(
   function SmartGroupMemberLabelEditor({
     conversationId,
+    isActive,
   }: SmartGroupMemberLabelEditorProps) {
     const i18n = useSelector(getIntl);
     const theme = useSelector(getTheme);
@@ -47,13 +50,9 @@ export const SmartGroupMemberLabelEditor = memo(
     const ourMembership = conversation.memberships?.find(
       membership => membership?.aci === ourAci
     );
-    if (!ourMembership) {
-      log.warn('User was not found in group, leaving this pane!');
-      popPanelForConversation();
-      return null;
-    }
     const { labelEmoji: existingLabelEmoji, labelString: existingLabelString } =
-      ourMembership;
+      ourMembership || {};
+    const canAddLabel = getCanAddLabel(conversation, ourMembership);
 
     const membersWithLabel = (conversation.memberships || [])
       .map(membership => {
@@ -94,11 +93,13 @@ export const SmartGroupMemberLabelEditor = memo(
 
     return (
       <GroupMemberLabelEditor
+        canAddLabel={canAddLabel}
         existingLabelEmoji={existingLabelEmoji}
         existingLabelString={existingLabelString}
         getPreferredBadge={getPreferredBadge}
         group={conversation}
         i18n={i18n}
+        isActive={isActive}
         me={me}
         membersWithLabel={membersWithLabel}
         ourColor={ourColor}

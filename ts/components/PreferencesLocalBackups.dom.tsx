@@ -1,113 +1,169 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ChangeEvent } from 'react';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-} from 'react';
+import type { ChangeEvent, JSX } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import lodash from 'lodash';
 import classNames from 'classnames';
 
-import type { LocalizerType } from '../types/I18N.std.js';
+import type { LocalizerType } from '../types/I18N.std.ts';
 import {
   FlowingSettingsControl as FlowingControl,
   SettingsRow,
-} from './PreferencesUtil.dom.js';
-import { ButtonVariant } from './Button.dom.js';
-import {
-  getOSAuthErrorString,
-  SIGNAL_BACKUPS_LEARN_MORE_URL,
-} from './PreferencesBackups.dom.js';
-import { I18n } from './I18n.dom.js';
-import type { SettingsLocation } from '../types/Nav.std.js';
-import { SettingsPage } from '../types/Nav.std.js';
-import { ToastType } from '../types/Toast.dom.js';
-import type { ShowToastAction } from '../state/ducks/toast.preload.js';
-import { Modal } from './Modal.dom.js';
-import { strictAssert } from '../util/assert.std.js';
+} from './PreferencesUtil.dom.tsx';
+import { SIGNAL_BACKUPS_LEARN_MORE_URL } from './PreferencesBackups.dom.tsx';
+import { I18n } from './I18n.dom.tsx';
+import type { SettingsLocation } from '../types/Nav.std.ts';
+import { SettingsPage } from '../types/Nav.std.ts';
+import { ToastType } from '../types/Toast.dom.tsx';
+import type { ShowToastAction } from '../state/ducks/toast.preload.ts';
+import { Modal } from './Modal.dom.tsx';
 import type {
   PromptOSAuthReasonType,
   PromptOSAuthResultType,
-} from '../util/os/promptOSAuthMain.main.js';
-import { ConfirmationDialog } from './ConfirmationDialog.dom.js';
-import { AxoButton } from '../axo/AxoButton.dom.js';
-import { SECOND } from '../util/durations/constants.std.js';
-import { formatTimestamp } from '../util/formatTimestamp.dom.js';
-import type { LocalBackupExportMetadata } from '../types/LocalExport.std.js';
+} from '../util/os/promptOSAuthMain.main.ts';
+import { AxoButton } from '../axo/AxoButton.dom.tsx';
+import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoCheckbox } from '../axo/AxoCheckbox.dom.tsx';
+import { SECOND } from '../util/durations/constants.std.ts';
+import { formatBackupKeyForDisplay } from '../util/formatBackupKeyForDisplay.std.ts';
+import { formatTimestamp } from '../util/formatTimestamp.dom.ts';
+import type { LocalBackupExportMetadata } from '../types/LocalExport.std.ts';
+import { tw } from '../axo/tw.dom.tsx';
+import { createLogger } from '../logging/log.std.ts';
+import { toLogFormat } from '../types/errors.std.ts';
+import { AxoAlertDialog } from '../axo/AxoAlertDialog.dom.tsx';
+import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
 
 const { noop } = lodash;
+const log = createLogger('PreferencesLocalBackups');
+
+const SIGNAL_USER_SAFETY_LINK =
+  'https://support.signal.org/hc/articles/9932566320410-Staying-Safe-from-Phishing-Scams-and-Impersonation';
 
 export function PreferencesLocalBackups({
-  accountEntropyPool,
-  backupKeyViewed,
+  backupKey,
+  backupKeyHash,
+  disableLocalBackups,
   i18n,
   lastLocalBackup,
   localBackupFolder,
-  onBackupKeyViewedChange,
+  openFileInFolder,
+  osName,
+  onBackupKeyViewed,
   settingsLocation,
   pickLocalBackupFolder,
+  previouslyViewedBackupKeyHash,
   promptOSAuth,
   setSettingsLocation,
   showToast,
   startLocalBackupExport,
 }: {
-  accountEntropyPool: string | undefined;
-  backupKeyViewed: boolean;
+  backupKey: string;
+  backupKeyHash: string;
+  disableLocalBackups: ({
+    deleteExistingBackups,
+  }: {
+    deleteExistingBackups: boolean;
+  }) => Promise<void>;
   i18n: LocalizerType;
   lastLocalBackup: LocalBackupExportMetadata | undefined;
   localBackupFolder: string | undefined;
-  onBackupKeyViewedChange: (keyViewed: boolean) => void;
+  onBackupKeyViewed: ({ backupKeyHash }: { backupKeyHash: string }) => void;
+  openFileInFolder: (path: string) => void;
+  osName: 'linux' | 'macos' | 'windows' | undefined;
   settingsLocation: SettingsLocation;
   pickLocalBackupFolder: () => Promise<string | undefined>;
+  previouslyViewedBackupKeyHash: string | undefined;
   promptOSAuth: (
     reason: PromptOSAuthReasonType
   ) => Promise<PromptOSAuthResultType>;
   setSettingsLocation: (settingsLocation: SettingsLocation) => void;
   showToast: ShowToastAction;
   startLocalBackupExport: () => void;
-}): React.JSX.Element {
+}): JSX.Element | null {
   const [authError, setAuthError] =
-    React.useState<Omit<PromptOSAuthResultType, 'success'>>();
+    useState<Exclude<PromptOSAuthResultType, 'success' | 'unsupported'>>();
   const [isAuthPending, setIsAuthPending] = useState<boolean>(false);
+  const [isDisablePending, setIsDisablePending] = useState<boolean>(false);
+  const [isShowingBackupKeyChangedModal, setIsShowingBackupKeyChangedModal] =
+    useState<boolean>(false);
 
-  if (!localBackupFolder) {
+  if (settingsLocation.page === SettingsPage.LocalBackupsSetupFolder) {
+    if (localBackupFolder) {
+      setSettingsLocation({ page: SettingsPage.LocalBackups });
+    }
     return (
       <LocalBackupsSetupFolderPicker
         i18n={i18n}
-        pickLocalBackupFolder={pickLocalBackupFolder}
+        pickLocalBackupFolder={async () => {
+          const folder = await pickLocalBackupFolder();
+          if (folder) {
+            setSettingsLocation({ page: SettingsPage.LocalBackupsSetupKey });
+          }
+        }}
       />
     );
   }
 
-  const isReferencingBackupKey =
-    settingsLocation.page === SettingsPage.LocalBackupsKeyReference;
-  if (!backupKeyViewed || isReferencingBackupKey) {
-    strictAssert(accountEntropyPool, 'AEP is required for backup key viewer');
-
+  if (
+    settingsLocation.page === SettingsPage.LocalBackupsSetupKey ||
+    settingsLocation.page === SettingsPage.LocalBackupsKeyReference
+  ) {
     return (
       <LocalBackupsBackupKeyViewer
-        accountEntropyPool={accountEntropyPool}
+        backupKey={backupKey}
         i18n={i18n}
-        isReferencing={isReferencingBackupKey}
+        isReferencing={
+          settingsLocation.page === SettingsPage.LocalBackupsKeyReference &&
+          previouslyViewedBackupKeyHash === backupKeyHash
+        }
         onBackupKeyViewed={() => {
-          if (backupKeyViewed) {
-            setSettingsLocation({
-              page: SettingsPage.LocalBackups,
-            });
-          } else {
-            onBackupKeyViewedChange(true);
-          }
+          onBackupKeyViewed({ backupKeyHash });
+          setSettingsLocation({
+            page: SettingsPage.LocalBackups,
+          });
         }}
         showToast={showToast}
       />
     );
   }
 
-  const learnMoreLink = (parts: Array<string | React.JSX.Element>) => (
+  if (!localBackupFolder && !isDisablePending) {
+    setSettingsLocation({ page: SettingsPage.LocalBackupsSetupFolder });
+    return null;
+  }
+
+  if (!previouslyViewedBackupKeyHash && !isDisablePending) {
+    setSettingsLocation({ page: SettingsPage.LocalBackupsSetupKey });
+    return null;
+  }
+
+  async function showKeyReferenceWithAuth() {
+    setAuthError(undefined);
+
+    try {
+      setIsAuthPending(true);
+      const result = await promptOSAuth('view-aep');
+      if (result === 'success' || result === 'unsupported') {
+        setSettingsLocation({
+          page: SettingsPage.LocalBackupsKeyReference,
+        });
+      } else {
+        setAuthError(result);
+      }
+    } catch (e) {
+      log.error(
+        'Error thrown when requesting OS auth for viewing AEP',
+        toLogFormat(e)
+      );
+      setAuthError('error');
+    } finally {
+      setIsAuthPending(false);
+    }
+  }
+
+  const learnMoreLink = (parts: Array<string | JSX.Element>) => (
     <a href={SIGNAL_BACKUPS_LEARN_MORE_URL} rel="noreferrer" target="_blank">
       {parts}
     </a>
@@ -120,6 +176,18 @@ export function PreferencesLocalBackups({
       })
     : i18n('icu:Preferences__local-backups-last-backup-never');
 
+  let showInFolderText = i18n(
+    'icu:PlaintextExport--CompleteDialog--ShowFiles--Windows'
+  );
+  if (osName === 'macos') {
+    showInFolderText = i18n(
+      'icu:PlaintextExport--CompleteDialog--ShowFiles--Mac'
+    );
+  } else if (osName === 'linux') {
+    showInFolderText = i18n(
+      'icu:PlaintextExport--CompleteDialog--ShowFiles--Linux'
+    );
+  }
   return (
     <>
       <div className="Preferences__padding">
@@ -145,7 +213,16 @@ export function PreferencesLocalBackups({
             <AxoButton.Root
               variant="secondary"
               size="lg"
-              onClick={startLocalBackupExport}
+              onClick={async () => {
+                if (
+                  !previouslyViewedBackupKeyHash ||
+                  previouslyViewedBackupKeyHash !== backupKeyHash
+                ) {
+                  setIsShowingBackupKeyChangedModal(true);
+                } else {
+                  startLocalBackupExport();
+                }
+              }}
             >
               {i18n('icu:Preferences__local-backups-backup-now')}
             </AxoButton.Root>
@@ -170,18 +247,22 @@ export function PreferencesLocalBackups({
             <AxoButton.Root
               variant="secondary"
               size="lg"
-              onClick={pickLocalBackupFolder}
+              onClick={() =>
+                localBackupFolder
+                  ? openFileInFolder(localBackupFolder)
+                  : undefined
+              }
             >
-              {i18n('icu:Preferences__local-backups-folder__change')}
+              {showInFolderText}
             </AxoButton.Root>
           </div>
         </FlowingControl>
         <FlowingControl>
           <div className="Preferences__two-thirds-flow">
             <label>
-              {i18n('icu:Preferences__backup-key')}
+              {i18n('icu:Preferences__recovery-key')}
               <div className="Preferences__description">
-                {i18n('icu:Preferences__backup-key-description')}
+                {i18n('icu:Preferences__recovery-key-description')}
               </div>
             </label>
           </div>
@@ -195,29 +276,41 @@ export function PreferencesLocalBackups({
             <AxoButton.Root
               variant="secondary"
               size="lg"
-              disabled={isAuthPending}
-              experimentalSpinner={
-                isAuthPending ? { 'aria-label': i18n('icu:loading') } : null
-              }
+              pending={isAuthPending}
               onClick={async () => {
-                setAuthError(undefined);
-
-                try {
-                  setIsAuthPending(true);
-                  const result = await promptOSAuth('view-aep');
-                  if (result === 'success' || result === 'unsupported') {
-                    setSettingsLocation({
-                      page: SettingsPage.LocalBackupsKeyReference,
-                    });
-                  } else {
-                    setAuthError(result);
-                  }
-                } finally {
-                  setIsAuthPending(false);
+                if (
+                  !previouslyViewedBackupKeyHash ||
+                  previouslyViewedBackupKeyHash !== backupKeyHash
+                ) {
+                  setIsShowingBackupKeyChangedModal(true);
+                } else {
+                  await showKeyReferenceWithAuth();
                 }
               }}
             >
               {i18n('icu:Preferences__view-key')}
+            </AxoButton.Root>
+          </div>
+        </FlowingControl>
+        <FlowingControl>
+          <div className="Preferences__two-thirds-flow">
+            <label>{i18n('icu:Preferences__local-backups-turn-off')}</label>
+          </div>
+          <div
+            className={classNames(
+              'Preferences__flow-button',
+              'Preferences__one-third-flow',
+              'Preferences__one-third-flow--align-right'
+            )}
+          >
+            <AxoButton.Root
+              variant="subtle-destructive"
+              size="lg"
+              onClick={() => {
+                setIsDisablePending(true);
+              }}
+            >
+              {i18n('icu:Preferences__local-backups-turn-off-action')}
             </AxoButton.Root>
           </div>
         </FlowingControl>
@@ -236,18 +329,209 @@ export function PreferencesLocalBackups({
         </div>
       </SettingsRow>
 
-      {authError && (
-        <ConfirmationDialog
+      {isDisablePending ? (
+        <DisableLocalBackupsDialog
           i18n={i18n}
-          dialogName="PreferencesLocalBackups--ErrorDialog"
-          onClose={() => setAuthError(undefined)}
-          cancelButtonVariant={ButtonVariant.Secondary}
-          cancelText={i18n('icu:ok')}
+          disableLocalBackups={disableLocalBackups}
+          onCancel={() => setIsDisablePending(false)}
+          onComplete={() => {
+            setIsDisablePending(false);
+            setSettingsLocation({ page: SettingsPage.Backups });
+          }}
+          onError={() => {
+            showToast({
+              toastType: ToastType.Error,
+            });
+            setIsDisablePending(false);
+            setSettingsLocation({ page: SettingsPage.Backups });
+          }}
+        />
+      ) : null}
+
+      {authError ? (
+        <AxoAlertDialog.Root
+          open
+          onOpenChange={open => {
+            if (!open) {
+              setAuthError(undefined);
+            }
+          }}
         >
-          {getOSAuthErrorString(authError) ?? i18n('icu:error')}
-        </ConfirmationDialog>
-      )}
+          <AxoAlertDialog.Content escape="cancel-is-noop">
+            <AxoAlertDialog.Title screenReaderOnly>
+              {i18n('icu:Toast--error')}
+            </AxoAlertDialog.Title>
+            <AxoAlertDialog.Body>
+              <AxoAlertDialog.Description>
+                {i18n(
+                  'icu:Preferences__local-backups-auth-error--unauthorized'
+                )}
+              </AxoAlertDialog.Description>
+            </AxoAlertDialog.Body>
+            <AxoAlertDialog.Footer>
+              <AxoAlertDialog.Cancel>{i18n('icu:ok')}</AxoAlertDialog.Cancel>
+            </AxoAlertDialog.Footer>
+          </AxoAlertDialog.Content>
+        </AxoAlertDialog.Root>
+      ) : null}
+
+      {isShowingBackupKeyChangedModal ? (
+        <AxoAlertDialog.Root
+          open
+          onOpenChange={open => {
+            if (!open) {
+              setIsShowingBackupKeyChangedModal(false);
+            }
+          }}
+        >
+          <div className={tw('p-4')}>
+            <AxoAlertDialog.Content escape="cancel-is-noop">
+              <AxoAlertDialog.Body>
+                <div className={tw('my-3 flex flex-col items-center')}>
+                  <LocalBackupSetupIcon symbol="key" />
+                  <AxoAlertDialog.Title>
+                    <div className={tw('mt-3 type-title-medium')}>
+                      {i18n('icu:Preferences__recovery-key-updated__title')}
+                    </div>
+                  </AxoAlertDialog.Title>
+                </div>
+                <AxoAlertDialog.Description>
+                  <div className={tw('mb-3')}>
+                    {i18n('icu:Preferences__recovery-key-updated__description')}
+                  </div>
+                </AxoAlertDialog.Description>
+              </AxoAlertDialog.Body>
+              <AxoAlertDialog.Footer>
+                <AxoAlertDialog.Cancel />
+                <AxoAlertDialog.Action
+                  variant="primary"
+                  onClick={showKeyReferenceWithAuth}
+                >
+                  {i18n('icu:Preferences__recovery-key-updated__view-key')}
+                </AxoAlertDialog.Action>
+              </AxoAlertDialog.Footer>
+            </AxoAlertDialog.Content>
+          </div>
+        </AxoAlertDialog.Root>
+      ) : null}
     </>
+  );
+}
+
+function DisableLocalBackupsDialog({
+  i18n,
+  disableLocalBackups,
+  onComplete,
+  onCancel,
+  onError,
+}: {
+  i18n: LocalizerType;
+  disableLocalBackups: ({
+    deleteExistingBackups,
+  }: {
+    deleteExistingBackups: boolean;
+  }) => Promise<void>;
+  onComplete: () => void;
+  onCancel: () => void;
+  onError: (e: unknown) => void;
+}) {
+  const [isPending, setIsPending] = useState<boolean>(false);
+
+  const [deleteExistingBackups, setDeleteExistingBackups] =
+    useState<boolean>(true);
+
+  const handleDisableLocalBackups = useCallback(async () => {
+    if (isPending) {
+      return;
+    }
+
+    try {
+      setIsPending(true);
+      await disableLocalBackups({ deleteExistingBackups });
+      onComplete();
+    } catch (e) {
+      log.error(
+        'Error when disabling local backups',
+        { deleteExistingBackups },
+        toLogFormat(e)
+      );
+      onError(e);
+    } finally {
+      setIsPending(false);
+    }
+  }, [
+    isPending,
+    deleteExistingBackups,
+    onComplete,
+    onError,
+    disableLocalBackups,
+  ]);
+
+  return (
+    <AxoDialog.Root
+      open
+      onOpenChange={(open: boolean) => {
+        if (isPending) {
+          return;
+        }
+
+        if (!open) {
+          onCancel();
+        }
+      }}
+    >
+      <AxoDialog.Content
+        size="md"
+        escape={isPending ? 'cancel-is-destructive' : 'cancel-is-noop'}
+      >
+        <div className={tw('p-2')}>
+          <AxoDialog.Header>
+            <AxoDialog.Title>
+              {i18n('icu:Preferences__local-backups-turn-off')}
+            </AxoDialog.Title>
+          </AxoDialog.Header>
+          <AxoDialog.Body padding="normal">
+            <AxoDialog.Description>
+              <div className={tw('mb-2 text-label-secondary')}>
+                {i18n('icu:Preferences__local-backups-turn-off-confirmation')}
+              </div>
+            </AxoDialog.Description>
+
+            <label
+              className={tw('flex items-center gap-3 px-4 py-2.5')}
+              htmlFor="deleteLocalBackupsCheckbox"
+            >
+              <AxoCheckbox.Root
+                id="deleteLocalBackupsCheckbox"
+                variant="square"
+                checked={deleteExistingBackups}
+                disabled={isPending}
+                onCheckedChange={setDeleteExistingBackups}
+              />
+              {i18n('icu:Preferences__local-backups-turn-off-delete')}
+            </label>
+          </AxoDialog.Body>
+          <AxoDialog.Footer>
+            <AxoDialog.Actions>
+              <AxoDialog.Action
+                variant="secondary"
+                onClick={onCancel}
+                disabled={isPending}
+              >
+                {i18n('icu:cancel')}
+              </AxoDialog.Action>
+              <AxoDialog.Action
+                variant="destructive"
+                pending={isPending}
+                onClick={handleDisableLocalBackups}
+              >
+                {i18n('icu:Preferences__local-backups-turn-off-action')}
+              </AxoDialog.Action>
+            </AxoDialog.Actions>
+          </AxoDialog.Footer>
+        </div>
+      </AxoDialog.Content>
+    </AxoDialog.Root>
   );
 }
 
@@ -257,7 +541,7 @@ function LocalBackupsSetupFolderPicker({
 }: {
   i18n: LocalizerType;
   pickLocalBackupFolder: () => Promise<string | undefined>;
-}): React.JSX.Element {
+}): JSX.Element {
   return (
     <div className="Preferences--LocalBackupsSetupScreen Preferences__padding">
       <div className="Preferences--LocalBackupsSetupScreenPaneContent">
@@ -282,60 +566,67 @@ function LocalBackupsSetupFolderPicker({
 
 type BackupKeyStep = 'view' | 'confirm' | 'caution' | 'reference';
 
+function Strong(parts: Array<string | JSX.Element>) {
+  return <strong>{parts}</strong>;
+}
+
 function LocalBackupsBackupKeyViewer({
-  accountEntropyPool,
+  backupKey,
   i18n,
   isReferencing,
   onBackupKeyViewed,
   showToast,
 }: {
-  accountEntropyPool: string;
+  backupKey: string;
   i18n: LocalizerType;
   isReferencing: boolean;
   onBackupKeyViewed: () => void;
   showToast: ShowToastAction;
-}): React.JSX.Element {
+}): JSX.Element {
   const [isBackupKeyConfirmed, setIsBackupKeyConfirmed] =
+    useState<boolean>(false);
+  const [isShowingDoNotShareModal, setIsShowingDoNotShareModal] =
     useState<boolean>(false);
   const [step, setStep] = useState<BackupKeyStep>(
     isReferencing ? 'reference' : 'view'
   );
   const isStepViewOrReference = step === 'view' || step === 'reference';
 
-  const backupKey = useMemo(() => {
-    return accountEntropyPool
-      .replace(/\s/g, '')
-      .replace(/.{4}(?=.)/g, '$& ')
-      .toUpperCase();
-  }, [accountEntropyPool]);
-
-  const onCopyBackupKey = useCallback(
-    async function handleCopyBackupKey(e: React.MouseEvent) {
-      e.preventDefault();
-      await window.SignalClipboard.copyTextTemporarily(backupKey, 45 * SECOND);
-      showToast({ toastType: ToastType.CopiedBackupKey });
-    },
-    [backupKey, showToast]
+  const backupKeyForDisplay = useMemo(
+    () => formatBackupKeyForDisplay(backupKey, { convertAmbiguousChars: true }),
+    [backupKey]
   );
+  const onCopyBackupKey = useCallback(() => {
+    window.SignalClipboard.copyTextTemporarily(
+      backupKeyForDisplay,
+      45 * SECOND
+    );
+    showToast({ toastType: ToastType.CopiedBackupKey });
+  }, [backupKeyForDisplay, showToast]);
 
-  const learnMoreLink = (parts: Array<string | React.JSX.Element>) => (
-    <a href={SIGNAL_BACKUPS_LEARN_MORE_URL} rel="noreferrer" target="_blank">
+  const learnMorePhishingLink = (parts: Array<string | JSX.Element>) => (
+    <a
+      className={tw('whitespace-nowrap text-color-label-primary')}
+      href={SIGNAL_USER_SAFETY_LINK}
+      rel="noreferrer"
+      target="_blank"
+    >
       {parts}
     </a>
   );
 
   let title: string;
-  let description: React.JSX.Element | string;
-  let footerLeft: React.JSX.Element | undefined;
-  let footerRight: React.JSX.Element;
+  let description: JSX.Element | string;
+  let footerLeft: JSX.Element | undefined;
+  let footerRight: JSX.Element;
   if (isStepViewOrReference) {
-    title = i18n('icu:Preferences--local-backups-record-backup-key');
+    title = i18n('icu:Preferences--local-backups-recovery-key--title');
     description = (
       <I18n
-        id="icu:Preferences--local-backups-record-backup-key-description"
+        id="icu:Preferences--local-backups-recovery-key--description"
         i18n={i18n}
         components={{
-          learnMoreLink,
+          learnMoreLink: learnMorePhishingLink,
         }}
       />
     );
@@ -357,9 +648,9 @@ function LocalBackupsBackupKeyViewer({
       );
     }
   } else {
-    title = i18n('icu:Preferences--local-backups-confirm-backup-key');
+    title = i18n('icu:Preferences--local-backups-confirm-recovery-key');
     description = i18n(
-      'icu:Preferences--local-backups-confirm-backup-key-description'
+      'icu:Preferences--local-backups-confirm-recovery-key-description'
     );
     footerLeft = (
       <AxoButton.Root
@@ -384,11 +675,58 @@ function LocalBackupsBackupKeyViewer({
 
   return (
     <div className="Preferences--LocalBackupsSetupScreen Preferences__settings-pane-content--with-footer Preferences__padding">
+      {isShowingDoNotShareModal ? (
+        <AxoAlertDialog.Root
+          open
+          onOpenChange={() => setIsShowingDoNotShareModal(false)}
+        >
+          <AxoAlertDialog.Content escape="cancel-is-noop">
+            <AxoAlertDialog.Body>
+              <div className={tw('mt-3 mb-2 flex flex-col items-center')}>
+                <img
+                  role="presentation"
+                  alt=""
+                  className={tw('mt-1 mb-3 size-16 shrink-0')}
+                  src="images/warning-circle.svg"
+                />
+                <AxoAlertDialog.Title>
+                  {i18n('icu:Preferences__recovery-key__do-not-share-title')}
+                </AxoAlertDialog.Title>
+              </div>
+              <AxoAlertDialog.Description>
+                <div className={tw('mb-3 text-center type-body-medium')}>
+                  <I18n
+                    i18n={i18n}
+                    id="icu:CompositionInput__recovery-key-warning--description"
+                    components={{
+                      strong: Strong,
+                      learnMoreLink: learnMorePhishingLink,
+                    }}
+                  />
+                </div>
+              </AxoAlertDialog.Description>
+            </AxoAlertDialog.Body>
+            <AxoAlertDialog.Footer>
+              <AxoAlertDialog.Action
+                variant="primary"
+                onClick={() => {
+                  onCopyBackupKey();
+                  setIsShowingDoNotShareModal(false);
+                }}
+              >
+                {i18n('icu:Preferences__recovery-key__do-not-share-confirm')}
+              </AxoAlertDialog.Action>
+            </AxoAlertDialog.Footer>
+          </AxoAlertDialog.Content>
+        </AxoAlertDialog.Root>
+      ) : null}
       {step === 'caution' && (
         <Modal
           i18n={i18n}
-          modalName="CallingAdhocCallInfo.UnknownContactInfo"
+          modalName="LocalBackupsConfirmKeyModal"
           moduleClassName="Preferences--LocalBackupsConfirmKeyModal"
+          noMouseClose
+          noEscapeClose
           modalFooter={
             <AxoButton.Root
               variant="primary"
@@ -426,7 +764,8 @@ function LocalBackupsBackupKeyViewer({
       <div className="Preferences--LocalBackupsSetupScreenPane">
         <div className="Preferences--LocalBackupsSetupScreenPaneContent">
           <LocalBackupsBackupKeyTextarea
-            backupKey={backupKey}
+            key={step === 'view' ? 'view' : 'reference'}
+            backupKeyForDisplay={backupKeyForDisplay}
             i18n={i18n}
             onValidate={(isValid: boolean) => setIsBackupKeyConfirmed(isValid)}
             isStepViewOrReference={isStepViewOrReference}
@@ -438,7 +777,7 @@ function LocalBackupsBackupKeyViewer({
               variant="secondary"
               size="sm"
               symbol="copy"
-              onClick={onCopyBackupKey}
+              onClick={() => setIsShowingDoNotShareModal(true)}
             >
               {i18n('icu:Preferences__local-backups-copy-key')}
             </AxoButton.Root>
@@ -458,54 +797,74 @@ function LocalBackupsBackupKeyViewer({
 }
 
 function LocalBackupsBackupKeyTextarea({
-  backupKey,
+  backupKeyForDisplay,
   i18n,
   onValidate,
   isStepViewOrReference,
 }: {
-  backupKey: string;
+  backupKeyForDisplay: string;
   i18n: LocalizerType;
   onValidate: (isValid: boolean) => void;
   isStepViewOrReference: boolean;
-}): React.JSX.Element {
+}): JSX.Element {
   const backupKeyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [backupKeyInput, setBackupKeyInput] = useState<string>('');
 
-  useEffect(() => {
-    if (backupKeyTextareaRef.current) {
-      backupKeyTextareaRef.current.focus();
-    }
-  }, [backupKeyTextareaRef, isStepViewOrReference]);
-
-  const backupKeyNoSpaces = React.useMemo(() => {
-    return backupKey.replace(/\s/g, '');
-  }, [backupKey]);
-
   const handleTextareaChange = useCallback(
     (ev: ChangeEvent<HTMLTextAreaElement>) => {
-      const { value } = ev.target;
-      const valueUppercaseNoSpaces = value.replace(/\s/g, '').toUpperCase();
-      const valueForUI = valueUppercaseNoSpaces.replace(/.{4}(?=.)/g, '$& ');
-      setBackupKeyInput(valueForUI);
-      onValidate(valueUppercaseNoSpaces === backupKeyNoSpaces);
+      const { selectionStart, value } = ev.target;
+
+      setBackupKeyInput(
+        formatBackupKeyForDisplay(value, { convertAmbiguousChars: false })
+      );
+
+      const currentCharIndex = value
+        .slice(0, selectionStart)
+        .replace(/\s/g, '').length;
+      const newCaretIndex =
+        currentCharIndex + Math.max(0, Math.floor((currentCharIndex - 1) / 4));
+
+      requestAnimationFrame(() => {
+        backupKeyTextareaRef.current?.setSelectionRange(
+          newCaretIndex,
+          newCaretIndex
+        );
+      });
+
+      onValidate(
+        formatBackupKeyForDisplay(value, { convertAmbiguousChars: true }) ===
+          backupKeyForDisplay
+      );
     },
-    [backupKeyNoSpaces, onValidate]
+    [backupKeyForDisplay, onValidate]
   );
 
   return (
     <textarea
-      aria-label={i18n('icu:Preferences--local-backups-backup-key-text-box')}
+      aria-label={i18n('icu:Preferences--local-backups-recovery-key-text-box')}
+      autoFocus
       className="Preferences--LocalBackupsBackupKey"
-      cols={20}
       dir="ltr"
-      rows={4}
       maxLength={79}
       onChange={isStepViewOrReference ? noop : handleTextareaChange}
       placeholder={i18n('icu:Preferences--local-backups-enter-backup-key')}
       readOnly={isStepViewOrReference}
       ref={backupKeyTextareaRef}
       spellCheck="false"
-      value={isStepViewOrReference ? backupKey : backupKeyInput}
+      value={isStepViewOrReference ? backupKeyForDisplay : backupKeyInput}
     />
+  );
+}
+
+function LocalBackupSetupIcon(props: { symbol: 'key' | 'lock' }): JSX.Element {
+  return (
+    <div
+      className={tw(
+        // eslint-disable-next-line better-tailwindcss/no-restricted-classes
+        'inline-flex size-16 items-center justify-center rounded-full bg-[#D2DFFB] text-[#3B45FD]'
+      )}
+    >
+      <AxoSymbol.Icon symbol={props.symbol} size={36} label={null} />
+    </div>
   );
 }

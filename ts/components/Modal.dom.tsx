@@ -1,27 +1,27 @@
 // Copyright 2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ReactElement, ReactNode } from 'react';
-import React, { useEffect, useRef, useState } from 'react';
+import type { ReactElement, ReactNode, JSX } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import lodash from 'lodash';
 import { animated } from '@react-spring/web';
 
 import { v4 as uuid } from 'uuid';
-import type { LocalizerType } from '../types/Util.std.js';
-import { ModalHost } from './ModalHost.dom.js';
-import type { Theme } from '../util/theme.std.js';
-import { assertDev } from '../util/assert.std.js';
-import { getClassNamesFor } from '../util/getClassNamesFor.std.js';
-import { useAnimated } from '../hooks/useAnimated.dom.js';
-import { useHasWrapped } from '../hooks/useHasWrapped.std.js';
-import { createLogger } from '../logging/log.std.js';
+import type { LocalizerType } from '../types/Util.std.ts';
+import { ModalHost } from './ModalHost.dom.tsx';
+import type { Theme } from '../util/theme.std.ts';
+import { assertDev } from '../util/assert.std.ts';
+import { getClassNamesFor } from '../util/getClassNamesFor.std.ts';
+import { useAnimated } from '../hooks/useAnimated.dom.tsx';
+import { useHasWrapped } from '../hooks/useHasWrapped.std.ts';
+import { createLogger } from '../logging/log.std.ts';
 import {
   isScrollOverflowVertical,
   isScrollAtTop,
   isScrollAtBottom,
   useScrollObserver,
-} from '../hooks/useSizeObserver.dom.js';
+} from '../hooks/useSizeObserver.dom.tsx';
 
 const { noop } = lodash;
 
@@ -34,7 +34,7 @@ type PropsType = {
   hasHeaderDivider?: boolean;
   hasFooterDivider?: boolean;
   i18n: LocalizerType;
-  modalFooter?: React.JSX.Element;
+  modalFooter?: JSX.Element;
   modalHeaderChildren?: ReactNode;
   moduleClassName?: string;
   onBackButtonClick?: () => unknown;
@@ -72,7 +72,7 @@ export function Modal({
   noTransform = false,
   padded = true,
   'aria-describedby': ariaDescribedBy,
-}: Readonly<ModalPropsType>): React.JSX.Element | null {
+}: Readonly<ModalPropsType>): JSX.Element | null {
   const { close, isClosed, modalStyles, overlayStyles } = useAnimated(
     onClose,
 
@@ -183,7 +183,7 @@ export function ModalPage({
   hasHeaderDivider = false,
   hasFooterDivider = false,
   'aria-describedby': ariaDescribedBy,
-}: ModalPageProps): React.JSX.Element {
+}: ModalPageProps): JSX.Element {
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -209,8 +209,7 @@ export function ModalPage({
   return (
     <>
       {/* We don't want the click event to propagate to its container node. */}
-      {/* eslint-disable-next-line max-len */}
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
         className={classNames(
           getClassName(''),
@@ -344,7 +343,7 @@ export function PagedModal({
   noMouseClose,
   onClose = noop,
   theme,
-}: PagedModalProps): React.JSX.Element | null {
+}: PagedModalProps): JSX.Element | null {
   const { close, isClosed, modalStyles, overlayStyles } = useAnimated(onClose, {
     getFrom: () => ({ opacity: 0, transform: 'translateY(48px)' }),
     getTo: isOpen =>
@@ -385,4 +384,4 @@ export function PagedModal({
   );
 }
 
-export type RenderModalPage = (onClose: () => void) => React.JSX.Element;
+export type RenderModalPage = (onClose: () => void) => JSX.Element;

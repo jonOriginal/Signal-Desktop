@@ -3,10 +3,10 @@
 
 import { z } from 'zod';
 
-import { Environment } from '../environment.std.js';
-import { themeSettingSchema } from './StorageUIKeys.std.js';
-import { HourCyclePreferenceSchema } from './I18N.std.js';
-import { DNSFallbackSchema } from './DNSFallback.std.js';
+import { Environment } from '../environment.std.ts';
+import { HourCyclePreferenceSchema } from './I18N.std.ts';
+import { DNSFallbackSchema } from './DNSFallback.std.ts';
+import { themeSettingSchema } from '../util/theme.std.ts';
 
 const environmentSchema = z.nativeEnum(Environment);
 
@@ -20,12 +20,17 @@ export type configOptionalStringType = z.infer<
   typeof configOptionalStringSchema
 >;
 
-export const directoryConfigSchema = z.object({
-  directoryUrl: configRequiredStringSchema,
-  directoryMRENCLAVE: configRequiredStringSchema,
+const svr2EnclaveSchema = z.object({
+  createdAt: z.iso.datetime(),
+  id: configRequiredStringSchema,
+});
+export const svr2ConfigSchema = z.object({
+  svr2Url: configRequiredStringSchema,
+  svr2MRENCLAVE: svr2EnclaveSchema,
 });
 
-export type DirectoryConfigType = z.infer<typeof directoryConfigSchema>;
+export type SVR2EnclaveType = z.infer<typeof svr2ConfigSchema>;
+export type SVR2ConfigType = z.infer<typeof svr2ConfigSchema>;
 
 export const rendererConfigSchema = z.object({
   appInstance: configOptionalStringSchema,
@@ -76,7 +81,8 @@ export const rendererConfigSchema = z.object({
   resourcesUrl: configRequiredStringSchema,
   userDataPath: configRequiredStringSchema,
   version: configRequiredStringSchema,
-  directoryConfig: directoryConfigSchema,
+
+  svr2Config: svr2ConfigSchema,
 
   // Only used by main window
   isMainWindowFullScreen: z.boolean(),

@@ -2,22 +2,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { assert } from 'chai';
-import Long from 'long';
 
-import MessageReceiver from '../textsecure/MessageReceiver.preload.js';
+import MessageReceiver from '../textsecure/MessageReceiver.preload.ts';
 import {
   IncomingWebSocketRequest,
   ServerRequestType,
-} from '../textsecure/WebsocketResources.preload.js';
-import type { DecryptionErrorEvent } from '../textsecure/messageReceiverEvents.std.js';
-import { generateAci } from '../types/ServiceId.std.js';
-import type { AciString } from '../types/ServiceId.std.js';
-import { toAciObject } from '../util/ServiceId.node.js';
-import { SignalService as Proto } from '../protobuf/index.std.js';
-import * as Crypto from '../Crypto.node.js';
-import { toBase64 } from '../Bytes.std.js';
-import { signalProtocolStore } from '../SignalProtocolStore.preload.js';
-import { itemStorage } from '../textsecure/Storage.preload.js';
+} from '../textsecure/WebsocketResources.preload.ts';
+import type { DecryptionErrorEvent } from '../textsecure/messageReceiverEvents.std.ts';
+import type { AciString } from '../types/ServiceId.std.ts';
+import { toAciObject } from '../util/ServiceId.node.ts';
+import { SignalService as Proto } from '../protobuf/index.std.ts';
+import * as Crypto from '../Crypto.node.ts';
+import { toBase64 } from '../Bytes.std.ts';
+import { signalProtocolStore } from '../SignalProtocolStore.preload.ts';
+import { itemStorage } from '../textsecure/Storage.preload.ts';
+import { generateAci } from '../test-helpers/serviceIdUtils.std.ts';
 
 describe('MessageReceiver', () => {
   const someAci = generateAci();
@@ -52,11 +51,23 @@ describe('MessageReceiver', () => {
 
       const body = Proto.Envelope.encode({
         type: Proto.Envelope.Type.DOUBLE_RATCHET,
+        sourceServiceId: null,
         sourceServiceIdBinary: toAciObject(someAci).getRawUuidBytes(),
         sourceDeviceId: deviceId,
-        clientTimestamp: Long.fromNumber(Date.now()),
+        clientTimestamp: BigInt(Date.now()),
         content: Crypto.getRandomBytes(200),
-      }).finish();
+        destinationServiceId: null,
+        destinationServiceIdBinary: null,
+        serverGuid: null,
+        serverGuidBinary: null,
+        serverTimestamp: null,
+        ephemeral: null,
+        urgent: null,
+        updatedPni: null,
+        story: null,
+        reportSpamToken: null,
+        updatedPniBinary: null,
+      });
 
       messageReceiver.handleRequest(
         new IncomingWebSocketRequest(

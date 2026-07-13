@@ -4,10 +4,10 @@
 import lodash from 'lodash';
 import SQL from '@signalapp/sqlcipher';
 
-import type { ReadableDB, WritableDB } from '../../sql/Interface.std.js';
-import type { QueryTemplate } from '../../sql/util.std.js';
-import { SCHEMA_VERSIONS } from '../../sql/migrations/index.node.js';
-import { consoleLogger } from '../../util/consoleLogger.std.js';
+import type { ReadableDB, WritableDB } from '../../sql/Interface.std.ts';
+import type { QueryTemplate } from '../../sql/util.std.ts';
+import { SCHEMA_VERSIONS } from '../../sql/migrations/index.node.ts';
+import { consoleLogger } from '../../util/consoleLogger.std.ts';
 
 const { noop } = lodash;
 
@@ -46,8 +46,11 @@ export function updateToVersion(db: WritableDB, version: number): void {
   throw new Error(`Migration to ${version} not found`);
 }
 
-type TableRows = ReadonlyArray<
-  Record<string, string | number | Buffer | null | Record<string, unknown>>
+export type TableRows = ReadonlyArray<
+  Record<
+    string,
+    string | number | Buffer<ArrayBuffer> | null | Record<string, unknown>
+  >
 >;
 
 export function insertData(

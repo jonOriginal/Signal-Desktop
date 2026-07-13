@@ -1,30 +1,30 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { useCallback, type ReactNode } from 'react';
+import { useCallback, type ReactNode, type JSX, type MouseEvent } from 'react';
 import type { ReadonlyDeep } from 'type-fest';
 
 import moment from 'moment';
-import { missingCaseError } from '../../../util/missingCaseError.std.js';
-import type { GenericMediaItemType } from '../../../types/MediaItem.std.js';
-import type { AttachmentForUIType } from '../../../types/Attachment.std.js';
-import type { LocalizerType } from '../../../types/Util.std.js';
-import { SpinnerV2 } from '../../SpinnerV2.dom.js';
-import { tw } from '../../../axo/tw.dom.js';
-import { AriaClickable } from '../../../axo/AriaClickable.dom.js';
-import { AxoSymbol } from '../../../axo/AxoSymbol.dom.js';
-import { UserText } from '../../UserText.dom.js';
+import { missingCaseError } from '../../../util/missingCaseError.std.ts';
+import type { GenericMediaItemType } from '../../../types/MediaItem.std.ts';
+import type { AttachmentForUIType } from '../../../types/Attachment.std.ts';
+import type { LocalizerType } from '../../../types/Util.std.ts';
+import { SpinnerV2 } from '../../SpinnerV2.dom.tsx';
+import { tw } from '../../../axo/tw.dom.tsx';
+import { AriaClickable } from '../../../axo/AriaClickable.dom.tsx';
+import { AxoSymbol } from '../../../axo/AxoSymbol.dom.tsx';
+import { UserText } from '../../UserText.dom.tsx';
 import {
   useAttachmentStatus,
   type AttachmentStatusType,
-} from '../../../hooks/useAttachmentStatus.std.js';
+} from '../../../hooks/useAttachmentStatus.std.ts';
 
 export type Props = Readonly<{
   i18n: LocalizerType;
   mediaItem: GenericMediaItemType;
-  thumbnail: React.ReactNode;
+  thumbnail: ReactNode;
   title: string;
-  subtitle: React.ReactNode;
+  subtitle: ReactNode;
   readyLabel: string;
   onClick: (status: AttachmentStatusType['state']) => void;
   showMessage: () => void;
@@ -44,7 +44,7 @@ export function ListItem({
   onClick,
   showMessage,
   renderContextMenu,
-}: Props): React.JSX.Element {
+}: Props): JSX.Element {
   const { message } = mediaItem;
   let attachment: AttachmentForUIType | undefined;
 
@@ -63,7 +63,7 @@ export function ListItem({
   const status = useAttachmentStatus(attachment);
 
   const handleClick = useCallback(
-    (ev: React.MouseEvent) => {
+    (ev: MouseEvent) => {
       ev.preventDefault();
       ev.stopPropagation();
       onClick(status?.state || 'ReadyToShow');
@@ -72,7 +72,7 @@ export function ListItem({
   );
 
   const handleDateClick = useCallback(
-    (ev: React.MouseEvent) => {
+    (ev: MouseEvent) => {
       ev.preventDefault();
       ev.stopPropagation();
       showMessage();
@@ -90,7 +90,7 @@ export function ListItem({
     throw missingCaseError(status);
   }
 
-  let button: React.JSX.Element | undefined;
+  let button: JSX.Element | undefined;
   if (
     status != null &&
     status.state !== 'ReadyToShow' &&
@@ -150,7 +150,7 @@ export function ListItem({
       </div>
       {renderContextMenu(
         mediaItem,
-        <AriaClickable.HiddenTrigger aria-label={label} onClick={handleClick} />
+        <AriaClickable.HiddenTrigger label={label} onClick={handleClick} />
       )}
       <AriaClickable.SubWidget>
         <button

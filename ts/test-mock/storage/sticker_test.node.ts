@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { assert } from 'chai';
+import type { PrimaryDevice } from '@signalapp/mock-server';
 import { Proto } from '@signalapp/mock-server';
-import * as durations from '../../util/durations/index.std.js';
-import type { App, Bootstrap } from './fixtures.node.js';
+import * as durations from '../../util/durations/index.std.ts';
+import type { App, Bootstrap } from './fixtures.node.ts';
 import {
   initStorage,
   debug,
@@ -13,12 +14,13 @@ import {
   storeStickerPacks,
   getStickerPackRecordPredicate,
   getStickerPackLink,
-} from './fixtures.node.js';
+} from './fixtures.node.ts';
 import {
   getMessageInTimelineByTimestamp,
   sendTextMessage,
-} from '../helpers.node.js';
-import { strictAssert } from '../../util/assert.std.js';
+} from '../helpers.node.ts';
+import { strictAssert } from '../../util/assert.std.ts';
+import { toNumber } from '../../util/toNumber.std.ts';
 
 const { StickerPackOperation } = Proto.SyncMessage;
 
@@ -46,7 +48,7 @@ describe('stickers', function (this: Mocha.Suite) {
 
   it('should install/uninstall stickers', async () => {
     const { phone, desktop, contacts } = bootstrap;
-    const [firstContact] = contacts;
+    const [firstContact] = contacts as [PrimaryDevice];
 
     const window = await app.getWindow();
 
@@ -77,13 +79,13 @@ describe('stickers', function (this: Mocha.Suite) {
         .locator(`a:has-text("${STICKER_PACKS[0].id.toString('hex')}")`)
         .click();
       await window
-        .getByTestId('StickerPreviewModal')
-        .getByRole('button', { name: 'Install' })
+        .getByRole('dialog', { name: 'Sticker Pack' })
+        .getByRole('button', { name: 'Add Stickers' })
         .click();
 
       debug('waiting for sync message');
       const { syncMessage } = await phone.waitForSyncMessage(entry =>
-        Boolean(entry.syncMessage.stickerPackOperation?.length)
+        Boolean(entry.syncMessage.stickerPackOperation.length)
       );
       const [syncOp] = syncMessage.stickerPackOperation ?? [];
       assert.isTrue(STICKER_PACKS[0].id.equals(syncOp?.packId ?? EMPTY));
@@ -101,12 +103,12 @@ describe('stickers', function (this: Mocha.Suite) {
       );
       assert.isTrue(
         STICKER_PACKS[0].key.equals(
-          stickerPack?.record.stickerPack?.packKey ?? EMPTY
+          stickerPack.record.stickerPack.packKey ?? EMPTY
         ),
         'Wrong sticker pack key'
       );
       assert.strictEqual(
-        stickerPack?.record.stickerPack?.position,
+        stickerPack.record.stickerPack.position,
         11,
         'Wrong sticker pack position'
       );
@@ -116,17 +118,21 @@ describe('stickers', function (this: Mocha.Suite) {
       debug('uninstalling first sticker pack via UI');
       const state = await phone.expectStorageState('initial state');
 
-      await conversationView
-        .locator(`a:has-text("${STICKER_PACKS[0].id.toString('hex')}")`)
-        .click();
+      // Dialog remains open after install
       await window
-        .getByTestId('StickerPreviewModal')
-        .getByRole('button', { name: 'Uninstall' })
+        .getByRole('dialog', { name: 'Sticker Pack' })
+        .getByRole('button', { name: 'Remove' })
         .click();
 
       // Confirm
       await window
-        .locator('.module-Button--destructive >> "Uninstall"')
+        .getByRole('alertdialog')
+        .filter({
+          has: window.getByText(
+            'You may not be able to re-install this sticker pack if you no longer have the source message.'
+          ),
+        })
+        .getByRole('button', { name: 'Uninstall' })
         .click();
 
       debug('waiting for sync message');
@@ -147,12 +153,13 @@ describe('stickers', function (this: Mocha.Suite) {
         'New storage state should have sticker pack record'
       );
       assert.deepStrictEqual(
-        stickerPack?.record.stickerPack?.packKey,
+        stickerPack.record.stickerPack.packKey,
         EMPTY,
         'Sticker pack key should be removed'
       );
-      const deletedAt =
-        stickerPack?.record.stickerPack?.deletedAtTimestamp?.toNumber() ?? 0;
+      const deletedAt = toNumber(
+        stickerPack.record.stickerPack.deletedAtTimestamp ?? 0n
+      );
       assert.isAbove(
         deletedAt,
         Date.now() - durations.HOUR,
@@ -183,8 +190,8 @@ describe('stickers', function (this: Mocha.Suite) {
       '[data-testid=StickerManager]'
     );
 
-    debug('switching to Installed tab');
-    await stickerManager.locator('.Tabs__tab >> "Installed"').click();
+    debug('switching to My Stickers tab');
+    await window.getByText('My Stickers').click();
 
     {
       debug('installing first sticker pack via storage service');
@@ -194,12 +201,11 @@ describe('stickers', function (this: Mocha.Suite) {
         state.updateRecord(
           getStickerPackRecordPredicate(STICKER_PACKS[0]),
           record => ({
-            ...record,
             stickerPack: {
-              ...record?.stickerPack,
+              ...record.stickerPack,
               packKey: STICKER_PACKS[0].key,
               position: 7,
-              deletedAtTimestamp: undefined,
+              deletedAtTimestamp: null,
             },
           })
         )
@@ -236,18 +242,18 @@ describe('stickers', function (this: Mocha.Suite) {
         getStickerPackRecordPredicate(STICKER_PACKS[1])
       );
       assert.ok(
-        stickerPack,
+        stickerPack?.record.stickerPack != null,
         'New storage state should have sticker pack record'
       );
       assert.isTrue(
         STICKER_PACKS[1].key.equals(
-          stickerPack?.record.stickerPack?.packKey ?? EMPTY
+          stickerPack.record.stickerPack.packKey ?? EMPTY
         ),
         'Wrong sticker pack key'
       );
       assert.strictEqual(
-        stickerPack?.record.stickerPack?.position,
-        12,
+        stickerPack.record.stickerPack.position,
+        11,
         'Wrong sticker pack position'
       );
     }
@@ -255,7 +261,7 @@ describe('stickers', function (this: Mocha.Suite) {
     debug('Verifying the final manifest version');
     const finalState = await phone.expectStorageState('consistency check');
 
-    assert.strictEqual(finalState.version, 5);
+    assert.strictEqual(finalState.version, 5n);
 
     debug(
       'verifying that stickers from packs can be received and paths are deduplicated'
@@ -271,6 +277,8 @@ describe('stickers', function (this: Mocha.Suite) {
         packId: STICKER_PACKS[0].id,
         packKey: STICKER_PACKS[0].key,
         stickerId: 0,
+        data: null,
+        emoji: null,
       },
       timestamp: firstTimestamp,
     });
@@ -284,6 +292,8 @@ describe('stickers', function (this: Mocha.Suite) {
         packId: STICKER_PACKS[0].id,
         packKey: STICKER_PACKS[0].key,
         stickerId: 0,
+        data: null,
+        emoji: null,
       },
       timestamp: secondTimestamp,
     });
@@ -298,10 +308,10 @@ describe('stickers', function (this: Mocha.Suite) {
       .waitFor();
 
     const firstStickerData = (await app.getMessagesBySentAt(firstTimestamp))[0]
-      .sticker?.data;
+      ?.sticker?.data;
     const secondStickerData = (
       await app.getMessagesBySentAt(secondTimestamp)
-    )[0].sticker?.data;
+    )[0]?.sticker?.data;
 
     strictAssert(firstStickerData?.path, 'path exists');
     strictAssert(firstStickerData?.localKey, 'localKey exists');

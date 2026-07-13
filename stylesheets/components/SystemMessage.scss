@@ -22,8 +22,8 @@
   flex-direction: column;
   justify-content: center;
   line-height: 16px;
-  padding-bottom: 16px;
-  padding-top: 16px;
+  padding-bottom: 10px;
+  padding-top: 10px;
 
   @include mixins.light-theme {
     color: variables.$color-gray-60;
@@ -141,6 +141,15 @@
 
     &--icon-group-summary::before {
       @include system-message-icon('../images/icons/v3/info/info-compact.svg');
+    }
+
+    &--icon-group-terminate::before {
+      @include system-message-icon(
+        '../images/icons/v3/group/group-x-inline.svg'
+      );
+      & {
+        width: 24px;
+      }
     }
 
     &--icon-info::before {
@@ -295,5 +304,9 @@
 
   &__button-container {
     margin-top: 12px;
+  }
+
+  .module-expire-timer {
+    vertical-align: middle;
   }
 }

@@ -1,28 +1,29 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, Fragment, type JSX } from 'react';
 import classNames from 'classnames';
 import { v4 as uuid } from 'uuid';
 
 import type { RowType } from '@signalapp/sqlcipher';
-import type { LocalizerType } from '../types/I18N.std.js';
-import { toLogFormat } from '../types/errors.std.js';
-import { formatFileSize } from '../util/formatFileSize.std.js';
-import { SECOND } from '../util/durations/index.std.js';
-import type { ValidationResultType as BackupValidationResultType } from '../services/backups/index.preload.js';
-import { SettingsRow, FlowingSettingsControl } from './PreferencesUtil.dom.js';
-import type { MessageCountBySchemaVersionType } from '../sql/Interface.std.js';
+import type { LocalizerType } from '../types/I18N.std.ts';
+import { toLogFormat } from '../types/errors.std.ts';
+import { formatFileSize } from '../util/formatFileSize.std.ts';
+import { SECOND } from '../util/durations/index.std.ts';
+import type { ValidationResultType as BackupValidationResultType } from '../services/backups/index.preload.ts';
+import { SettingsRow, FlowingSettingsControl } from './PreferencesUtil.dom.tsx';
+import type { MessageCountBySchemaVersionType } from '../sql/Interface.std.ts';
 import type { MessageAttributesType } from '../model-types.d.ts';
-import type { DonationReceipt } from '../types/Donations.std.js';
-import { createLogger } from '../logging/log.std.js';
-import { isStagingServer } from '../util/isStagingServer.dom.js';
-import { getHumanDonationAmount } from '../util/currency.dom.js';
-import { AutoSizeTextArea } from './AutoSizeTextArea.dom.js';
-import { AxoButton } from '../axo/AxoButton.dom.js';
-import { AxoSwitch } from '../axo/AxoSwitch.dom.js';
-import type { VisibleRemoteMegaphoneType } from '../types/Megaphone.std.js';
-import { internalGetTestMegaphone } from '../util/getTestMegaphone.std.js';
+import type { DonationReceipt } from '../types/Donations.std.ts';
+import type { StorageAccessType } from '../types/StorageKeys.std.ts';
+import { createLogger } from '../logging/log.std.ts';
+import { isStagingServer } from '../util/isStagingServer.dom.ts';
+import { getHumanDonationAmount } from '../util/currency.dom.ts';
+import { AutoSizeTextArea } from './AutoSizeTextArea.dom.tsx';
+import { AxoButton } from '../axo/AxoButton.dom.tsx';
+import { AxoSwitch } from '../axo/AxoSwitch.dom.tsx';
+import type { VisibleRemoteMegaphoneType } from '../types/Megaphone.std.ts';
+import { internalGetTestMegaphone } from '../util/getTestMegaphone.std.ts';
 
 const log = createLogger('PreferencesInternal');
 
@@ -40,6 +41,21 @@ export function PreferencesInternal({
   __dangerouslyRunAbitraryReadOnlySqlQuery,
   cqsTestMode,
   setCqsTestMode,
+
+  dredDuration,
+  setDredDuration,
+  isDirectVp9Enabled,
+  setIsDirectVp9Enabled,
+  directMaxBitrate,
+  setDirectMaxBitrate,
+  isGroupVp9Enabled,
+  setIsGroupVp9Enabled,
+  groupMaxBitrate,
+  setGroupMaxBitrate,
+  sfuUrl,
+  setSfuUrl,
+  forceKeyTransparencyCheck,
+  keyTransparencySelfHealth,
 }: {
   i18n: LocalizerType;
   validateBackup: () => Promise<BackupValidationResultType>;
@@ -50,7 +66,7 @@ export function PreferencesInternal({
   donationReceipts: ReadonlyArray<DonationReceipt>;
   internalAddDonationReceipt: (receipt: DonationReceipt) => void;
   saveAttachmentToDisk: (options: {
-    data: Uint8Array;
+    data: Uint8Array<ArrayBuffer>;
     name: string;
     baseDir?: string | undefined;
   }) => Promise<{ fullPath: string; name: string } | null>;
@@ -65,7 +81,21 @@ export function PreferencesInternal({
   ) => Promise<ReadonlyArray<RowType<object>>>;
   cqsTestMode: boolean;
   setCqsTestMode: (value: boolean) => void;
-}): React.JSX.Element {
+  dredDuration: number | undefined;
+  setDredDuration: (value: number | undefined) => void;
+  isDirectVp9Enabled: boolean | undefined;
+  setIsDirectVp9Enabled: (value: boolean | undefined) => void;
+  directMaxBitrate: number | undefined;
+  setDirectMaxBitrate: (value: number | undefined) => void;
+  isGroupVp9Enabled: boolean | undefined;
+  setIsGroupVp9Enabled: (value: boolean | undefined) => void;
+  groupMaxBitrate: number | undefined;
+  setGroupMaxBitrate: (value: number | undefined) => void;
+  sfuUrl: string | undefined;
+  setSfuUrl: (value: string | undefined) => void;
+  forceKeyTransparencyCheck: () => Promise<void>;
+  keyTransparencySelfHealth: StorageAccessType['keyTransparencySelfHealth'];
+}): JSX.Element {
   const [messageCountBySchemaVersion, setMessageCountBySchemaVersion] =
     useState<MessageCountBySchemaVersionType>();
   const [messageSampleForVersions, setMessageSampleForVersions] = useState<{
@@ -89,6 +119,57 @@ export function PreferencesInternal({
     RowType<object>
   > | null>(null);
 
+  const stripAndParseString = (input: string): number | undefined => {
+    const stripped = input.replace(/\D/g, '');
+    return stripped.length !== 0 ? parseInt(stripped, 10) : undefined;
+  };
+
+  const handleDredDurationUpdate = useCallback(
+    (input: string) => {
+      const parsed = stripAndParseString(input);
+      if (parsed) {
+        setDredDuration(Math.min(100, parsed));
+      } else {
+        setDredDuration(undefined);
+      }
+    },
+    [setDredDuration]
+  );
+  const handleDirectMaxBitrateUpdate = useCallback(
+    (input: string) => {
+      setDirectMaxBitrate(stripAndParseString(input));
+    },
+    [setDirectMaxBitrate]
+  );
+  const handleGroupMaxBitrateUpdate = useCallback(
+    (input: string) => {
+      setGroupMaxBitrate(stripAndParseString(input));
+    },
+    [setGroupMaxBitrate]
+  );
+  const handleSfuUrlUpdate = useCallback(
+    (input: string) => {
+      const url = input.trim();
+      setSfuUrl(url.length !== 0 ? url : undefined);
+    },
+    [setSfuUrl]
+  );
+  const handleResetCallingOverrides = useCallback(() => {
+    setDredDuration(undefined);
+    setIsDirectVp9Enabled(undefined);
+    setDirectMaxBitrate(undefined);
+    setIsGroupVp9Enabled(undefined);
+    setGroupMaxBitrate(undefined);
+    setSfuUrl(undefined);
+  }, [
+    setDredDuration,
+    setIsDirectVp9Enabled,
+    setDirectMaxBitrate,
+    setIsGroupVp9Enabled,
+    setGroupMaxBitrate,
+    setSfuUrl,
+  ]);
+
   const validateBackup = useCallback(async () => {
     setIsValidationPending(true);
     setValidationResult(undefined);
@@ -104,7 +185,7 @@ export function PreferencesInternal({
   const renderValidationResult = useCallback(
     (
       backupResult: BackupValidationResultType | undefined
-    ): React.JSX.Element | undefined => {
+    ): JSX.Element | undefined => {
       if (backupResult == null) {
         return;
       }
@@ -114,7 +195,7 @@ export function PreferencesInternal({
           result: { totalBytes, stats, duration },
         } = backupResult;
 
-        let snapshotDirEl: React.JSX.Element | undefined;
+        let snapshotDirEl: JSX.Element | undefined;
         if ('snapshotDir' in backupResult.result) {
           snapshotDirEl = (
             <p>
@@ -163,7 +244,7 @@ export function PreferencesInternal({
     };
 
     try {
-      await internalAddDonationReceipt(testReceipt);
+      internalAddDonationReceipt(testReceipt);
     } catch (error) {
       log.error('Error adding test receipt:', toLogFormat(error));
     }
@@ -199,6 +280,31 @@ export function PreferencesInternal({
     },
     []
   );
+
+  // Key Transparancy
+
+  const [isKeyTransparencyRunning, setIsKeyTransparencyRunning] =
+    useState(false);
+
+  const handleKeyTransparencyCheck = useCallback(async () => {
+    setIsKeyTransparencyRunning(true);
+    try {
+      await forceKeyTransparencyCheck();
+    } finally {
+      setIsKeyTransparencyRunning(false);
+    }
+  }, [forceKeyTransparencyCheck]);
+
+  let keyTransparencySymbol: undefined | 'check-circle-fill' | 'error-fill';
+  if (keyTransparencySelfHealth == null) {
+    keyTransparencySymbol = undefined;
+  } else if (keyTransparencySelfHealth === 'ok') {
+    keyTransparencySymbol = 'check-circle-fill';
+  } else if (keyTransparencySelfHealth === 'fail') {
+    keyTransparencySymbol = 'error-fill';
+  } else if (keyTransparencySelfHealth === 'intermittent') {
+    keyTransparencySymbol = 'error-fill';
+  }
 
   const prevAbortControlerRef = useRef<AbortController | null>(null);
 
@@ -242,12 +348,7 @@ export function PreferencesInternal({
               variant="secondary"
               size="lg"
               onClick={validateBackup}
-              disabled={isValidationPending}
-              experimentalSpinner={
-                isValidationPending
-                  ? { 'aria-label': i18n('icu:loading') }
-                  : null
-              }
+              pending={isValidationPending}
             >
               {i18n('icu:Preferences__internal__validate-backup')}
             </AxoButton.Root>
@@ -301,7 +402,7 @@ export function PreferencesInternal({
                   {messageCountBySchemaVersion.map(
                     ({ schemaVersion, count }) => {
                       return (
-                        <React.Fragment key={schemaVersion}>
+                        <Fragment key={schemaVersion}>
                           <tr>
                             <td>{schemaVersion}</td>
                             <td>{count}</td>
@@ -338,7 +439,7 @@ export function PreferencesInternal({
                               </td>
                             </tr>
                           ) : null}
-                        </React.Fragment>
+                        </Fragment>
                       );
                     }
                   )}
@@ -420,12 +521,7 @@ export function PreferencesInternal({
                           variant="secondary"
                           size="lg"
                           onClick={() => handleGenerateReceipt(receipt)}
-                          disabled={isGeneratingReceipt}
-                          experimentalSpinner={
-                            isGeneratingReceipt
-                              ? { 'aria-label': i18n('icu:loading') }
-                              : null
-                          }
+                          pending={isGeneratingReceipt}
                         >
                           Download
                         </AxoButton.Root>
@@ -558,6 +654,110 @@ export function PreferencesInternal({
             moduleClassName="Preferences__ReadonlySqlPlayground__Textarea"
           />
         )}
+      </SettingsRow>
+      <SettingsRow title="Calling General">
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">
+            Clear custom calling preferences
+          </div>
+          <div className="Preferences__one-third-flow Preferences__one-third-flow--justify-end">
+            <AxoButton.Root
+              variant="destructive"
+              size="lg"
+              onClick={handleResetCallingOverrides}
+            >
+              Clear
+            </AxoButton.Root>
+          </div>
+        </FlowingSettingsControl>
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">
+            DRED Duration (0 - 100)
+          </div>
+          <div className="Preferences__one-third-flow Preferences__one-third-flow--justify-end">
+            <AutoSizeTextArea
+              i18n={i18n}
+              value={dredDuration?.toString(10)}
+              onChange={handleDredDurationUpdate}
+              placeholder="0 - 100"
+              moduleClassName="Preferences__ReadonlySqlPlayground__Textarea"
+            />
+          </div>
+        </FlowingSettingsControl>
+      </SettingsRow>
+      <SettingsRow title="Direct Calls">
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">Enable VP9</div>
+          <div className="Preferences__one-third-flow Preferences__one-third-flow--justify-end">
+            <AxoSwitch.Root
+              checked={isDirectVp9Enabled ?? true}
+              onCheckedChange={setIsDirectVp9Enabled}
+            />
+          </div>
+        </FlowingSettingsControl>
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">Max bitrate</div>
+          <div className="Preferences__one-third-flow Preferences__one-third-flow--justify-end">
+            <AutoSizeTextArea
+              i18n={i18n}
+              value={directMaxBitrate?.toString(10)}
+              onChange={handleDirectMaxBitrateUpdate}
+              placeholder="Default"
+              moduleClassName="Preferences__ReadonlySqlPlayground__Textarea"
+            />
+          </div>
+        </FlowingSettingsControl>
+      </SettingsRow>
+      <SettingsRow title="Group/Adhoc Calls">
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">Enable VP9</div>
+          <div className="Preferences__one-third-flow Preferences__one-third-flow--justify-end">
+            <AxoSwitch.Root
+              checked={isGroupVp9Enabled ?? false}
+              onCheckedChange={setIsGroupVp9Enabled}
+            />
+          </div>
+        </FlowingSettingsControl>
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">Max bitrate</div>
+          <div className="Preferences__one-third-flow Preferences__one-third-flow--justify-end">
+            <AutoSizeTextArea
+              i18n={i18n}
+              value={groupMaxBitrate?.toString(10)}
+              onChange={handleGroupMaxBitrateUpdate}
+              placeholder="Default"
+              moduleClassName="Preferences__ReadonlySqlPlayground__Textarea"
+            />
+          </div>
+        </FlowingSettingsControl>
+        <FlowingSettingsControl>
+          <div className="Preferences__one-third-flow">SFU URL</div>
+          <div className="Preferences__two-thirds-flow Preferences__two-thirds-flow--justify-end">
+            <AutoSizeTextArea
+              i18n={i18n}
+              value={sfuUrl}
+              onChange={handleSfuUrlUpdate}
+              placeholder="https://sfu.voip.signal.org"
+              moduleClassName="Preferences__ReadonlySqlPlayground__Textarea"
+            />
+          </div>
+        </FlowingSettingsControl>
+      </SettingsRow>
+      <SettingsRow title="Key Transparency">
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">Force Self Check</div>
+          <div className="Preferences__one-third-flow Preferences__one-third-flow--justify-end">
+            <AxoButton.Root
+              symbol={keyTransparencySymbol}
+              variant="secondary"
+              size="lg"
+              onClick={handleKeyTransparencyCheck}
+              pending={isKeyTransparencyRunning}
+            >
+              Check
+            </AxoButton.Root>
+          </div>
+        </FlowingSettingsControl>
       </SettingsRow>
     </div>
   );

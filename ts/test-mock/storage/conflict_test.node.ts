@@ -2,19 +2,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { assert } from 'chai';
-import Long from 'long';
 import { expect } from 'playwright/test';
-import type { Group, StorageState } from '@signalapp/mock-server';
+import type {
+  Group,
+  PrimaryDevice,
+  StorageState,
+  StorageStateRecord,
+} from '@signalapp/mock-server';
 import { Proto } from '@signalapp/mock-server';
 
-import * as durations from '../../util/durations/index.std.js';
-import { createCallLink } from '../helpers.node.js';
-import type { App, Bootstrap } from './fixtures.node.js';
+import * as durations from '../../util/durations/index.std.ts';
+import { createCallLink } from '../helpers.node.ts';
+import type { App, Bootstrap } from './fixtures.node.ts';
 import {
   initStorage,
   debug,
   getCallLinkRecordPredicate,
-} from './fixtures.node.js';
+} from './fixtures.node.ts';
 
 const IdentifierType = Proto.ManifestRecord.Identifier.Type;
 
@@ -40,12 +44,10 @@ describe('storage service', function (this: Mocha.Suite) {
   });
 
   for (const kind of ['contact', 'group']) {
-    // eslint-disable-next-line no-loop-func
+    // oxlint-disable-next-line no-loop-func
     it(`should handle ${kind} conflicts`, async () => {
-      const {
-        phone,
-        contacts: [first],
-      } = bootstrap;
+      const { phone, contacts } = bootstrap;
+      const [first] = contacts as [PrimaryDevice];
 
       const window = await app.getWindow();
 
@@ -72,15 +74,15 @@ describe('storage service', function (this: Mocha.Suite) {
 
         const record =
           kind === 'contact'
-            ? await newState.getContact(first)
-            : await newState.getGroup(group);
+            ? newState.getContact(first)
+            : newState.getGroup(group);
 
         assert.ok(record, 'contact record not found');
         assert.ok(record?.archived, 'contact archived');
       }
 
       debug('updating contact on phone without sync message');
-      let archivedVersion: number;
+      let archivedVersion: bigint;
       {
         const state = await phone.expectStorageState('consistency check');
 
@@ -129,11 +131,8 @@ describe('storage service', function (this: Mocha.Suite) {
   }
 
   it('should handle account conflicts', async () => {
-    const {
-      phone,
-      desktop,
-      contacts: [first, second],
-    } = bootstrap;
+    const { phone, desktop, contacts } = bootstrap;
+    const [first, second] = contacts as [PrimaryDevice, PrimaryDevice];
 
     const window = await app.getWindow();
 
@@ -163,7 +162,7 @@ describe('storage service', function (this: Mocha.Suite) {
     }
 
     debug('updating pins on phone without sync message');
-    let archivedVersion: number;
+    let archivedVersion: bigint;
     {
       const state = await phone.expectStorageState('consistency check');
 
@@ -218,20 +217,27 @@ describe('storage service', function (this: Mocha.Suite) {
         after: state,
       });
 
-      const updatedList = newState.findRecord(({ type }) => {
-        return type === IdentifierType.STORY_DISTRIBUTION_LIST;
-      });
-      assert.isFalse(updatedList?.record?.storyDistributionList?.allowsReplies);
+      const updatedList = newState.findRecord(
+        (
+          record
+        ): record is StorageStateRecord<{
+          record: 'storyDistributionList';
+          storyDistributionList: Proto.StoryDistributionListRecord.Params;
+        }> => {
+          return record.type === IdentifierType.STORY_DISTRIBUTION_LIST;
+        }
+      );
+      assert.isFalse(updatedList?.record.storyDistributionList.allowsReplies);
     }
 
     debug('updating distribution list on phone without sync');
-    let archivedVersion: number;
+    let archivedVersion: bigint;
     {
       const state = await phone.expectStorageState('consistency check');
 
       let newState = state.updateRecord(
-        ({ type }) => {
-          return type === IdentifierType.STORY_DISTRIBUTION_LIST;
+        (record): record is StorageStateRecord => {
+          return record.type === IdentifierType.STORY_DISTRIBUTION_LIST;
         },
         // Just changing storage ID
         record => record
@@ -281,10 +287,10 @@ describe('storage service', function (this: Mocha.Suite) {
     debug('Updating storage without sync');
     const deletedAt = bootstrap.getTimestamp();
     state = state.updateRecord(getCallLinkRecordPredicate(roomId), record => ({
-      ...record,
+      record: 'callLink',
       callLink: {
-        ...(record.callLink ?? {}),
-        deletedAtTimestampMs: Long.fromNumber(deletedAt),
+        ...record.callLink,
+        deletedAtTimestampMs: BigInt(deletedAt),
       },
     }));
 
@@ -297,10 +303,10 @@ describe('storage service', function (this: Mocha.Suite) {
       .getByRole('button', { name: 'Delete link' })
       .click();
 
-    const confirmModal = await window.getByTestId(
-      'ConfirmationDialog.CallLinkDetails__DeleteLinkModal'
-    );
-    await confirmModal.locator('.module-Button').getByText('Delete').click();
+    await window
+      .getByRole('alertdialog', { name: 'Delete call link?' })
+      .getByRole('button', { name: 'Delete' })
+      .click();
 
     debug('Waiting for manifest sync');
     await app.waitForManifestVersion(state.version);
@@ -313,10 +319,9 @@ describe('storage service', function (this: Mocha.Suite) {
     state = await phone.waitForStorageState({ after: state });
 
     assert.strictEqual(
-      state
-        .findRecord(getCallLinkRecordPredicate(roomId))
-        ?.record.callLink?.deletedAtTimestampMs?.toNumber(),
-      deletedAt
+      state.findRecord(getCallLinkRecordPredicate(roomId))?.record.callLink
+        .deletedAtTimestampMs,
+      BigInt(deletedAt)
     );
     assert.exists(state.findRecord(getCallLinkRecordPredicate(otherRoomId)));
   });

@@ -1,29 +1,29 @@
 // Copyright 2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { memo } from 'react';
+import { memo, useCallback } from 'react';
 import type { MutableRefObject } from 'react';
 import { useSelector } from 'react-redux';
 
-import { getIntl, getTheme } from '../selectors/user.std.js';
+import { getIntl, getTheme } from '../selectors/user.std.ts';
 import {
   NotificationProfilesCreateFlow,
   NotificationProfilesHome,
-} from '../../components/PreferencesNotificationProfiles.dom.js';
+} from '../../components/PreferencesNotificationProfiles.dom.tsx';
 import {
   getAllComposableConversations,
   getConversationSelector,
-} from '../selectors/conversations.dom.js';
-import { getPreferredBadgeSelector } from '../selectors/badges.preload.js';
-import { useNotificationProfilesActions } from '../ducks/notificationProfiles.preload.js';
+} from '../selectors/conversations.dom.ts';
+import { getPreferredBadgeSelector } from '../selectors/badges.preload.ts';
+import { useNotificationProfilesActions } from '../ducks/notificationProfiles.preload.ts';
 import {
   getActiveProfile,
   getLoading,
   getProfiles,
-} from '../selectors/notificationProfiles.dom.js';
-import type { SettingsLocation } from '../../types/Nav.std.js';
-import { getItems } from '../selectors/items.dom.js';
-import { useItemsActions } from '../ducks/items.preload.js';
+} from '../selectors/notificationProfiles.dom.ts';
+import type { SettingsLocation } from '../../types/Nav.std.ts';
+import { getItems } from '../selectors/items.dom.ts';
+import { useItemsActions } from '../ducks/items.preload.ts';
 
 export type ExternalProps = {
   contentsRef: MutableRefObject<HTMLDivElement | null>;
@@ -60,13 +60,13 @@ export const SmartNotificationProfilesHome = memo(
     } = useNotificationProfilesActions();
     const { putItem } = useItemsActions();
 
-    const setIsSyncEnabled = React.useCallback(
+    const setIsSyncEnabled = useCallback(
       (value: boolean) => {
         originalSetIsSyncEnabled(value, { fromStorageService: false });
       },
       [originalSetIsSyncEnabled]
     );
-    const setHasOnboardingBeenSeen = React.useCallback(
+    const setHasOnboardingBeenSeen = useCallback(
       (value: boolean) => {
         putItem('hasSeenNotificationProfileOnboarding', value);
       },

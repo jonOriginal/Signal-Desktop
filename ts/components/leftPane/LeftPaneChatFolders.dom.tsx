@@ -1,34 +1,35 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import React, {
+import {
   useCallback,
   useMemo,
   type FocusEvent,
   type ReactNode,
+  type JSX,
 } from 'react';
 import {
   ChatFolderType,
   type ChatFolder,
   type ChatFolderId,
-} from '../../types/ChatFolder.std.js';
-import type { LocalizerType } from '../../types/I18N.std.js';
-import { ExperimentalAxoSegmentedControl } from '../../axo/AxoSegmentedControl.dom.js';
-import { tw } from '../../axo/tw.dom.js';
+} from '../../types/ChatFolder.std.ts';
+import type { LocalizerType } from '../../types/I18N.std.ts';
+import { ExperimentalAxoSegmentedControl } from '../../axo/AxoSegmentedControl.dom.tsx';
+import { tw } from '../../axo/tw.dom.tsx';
 import type {
   AllChatFoldersUnreadStats,
   UnreadStats,
-} from '../../util/countUnreadStats.std.js';
-import { WidthBreakpoint } from '../_util.std.js';
-import { AxoSelect } from '../../axo/AxoSelect.dom.js';
-import { AxoContextMenu } from '../../axo/AxoContextMenu.dom.js';
-import { getMuteValuesOptions } from '../../util/getMuteOptions.std.js';
+} from '../../util/countUnreadStats.std.ts';
+import { WidthBreakpoint } from '../_util.std.ts';
+import { AxoSelect } from '../../axo/AxoSelect.dom.tsx';
+import { AxoContextMenu } from '../../axo/AxoContextMenu.dom.tsx';
+import { getMuteValuesOptions } from '../../util/getMuteOptions.std.ts';
 import type {
   AllChatFoldersMutedStats,
   MutedStats,
-} from '../../util/countMutedStats.std.js';
-import type { AxoSymbol } from '../../axo/AxoSymbol.dom.js';
-import { UserText } from '../UserText.dom.js';
-import { CurrentChatFolders } from '../../types/CurrentChatFolders.std.js';
+} from '../../util/countMutedStats.std.ts';
+import type { AxoSymbol } from '../../axo/AxoSymbol.dom.tsx';
+import { UserText } from '../UserText.dom.tsx';
+import { CurrentChatFolders } from '../../types/CurrentChatFolders.std.ts';
 
 export type LeftPaneChatFoldersProps = Readonly<{
   i18n: LocalizerType;
@@ -90,7 +91,7 @@ const LEFT_PANE_CHAT_FOLDERS_CLASS_NAME = 'module-left-pane__chatFolders';
 
 export function LeftPaneChatFolders(
   props: LeftPaneChatFoldersProps
-): React.JSX.Element | null {
+): JSX.Element | null {
   const { i18n, currentChatFolders, onSelectedChatFolderIdChange } = props;
 
   const sortedChatFolders = useMemo(() => {
@@ -152,7 +153,7 @@ export function LeftPaneChatFolders(
   return (
     <div
       className={tw(
-        'scroll-px-[20%] overflow-x-auto overflow-y-clip px-4 py-2 [scrollbar-width:none]'
+        'scroll-px-[20%] scrollbar-width-none overflow-x-auto overflow-y-clip px-4 py-2'
       )}
       onFocus={handleFocus}
     >
@@ -192,7 +193,7 @@ function ChatFolderSelectItem(props: {
   i18n: LocalizerType;
   chatFolder: ChatFolder;
   unreadStats: UnreadStats | null;
-}): React.JSX.Element {
+}): JSX.Element {
   const { i18n, unreadStats } = props;
 
   const badgeValue = useMemo(() => {
@@ -218,7 +219,7 @@ function ChatFolderSelectItem(props: {
               maxCount: UNREAD_BADGE_MAX_COUNT,
             }
           )}
-          aria-label={null}
+          label={null}
         />
       )}
     </AxoSelect.Item>
@@ -233,7 +234,7 @@ function ChatFolderSegmentedControlItem(props: {
   onChatFolderMarkRead: (chatFolderId: ChatFolderId) => void;
   onChatFolderUpdateMute: (chatFolderId: ChatFolderId, value: number) => void;
   onChatFolderOpenSettings: (chatFolderId: ChatFolderId) => void;
-}): React.JSX.Element {
+}): JSX.Element {
   const { i18n, unreadStats } = props;
 
   const badgeValue = useMemo(() => {
@@ -262,7 +263,7 @@ function ChatFolderSegmentedControlItem(props: {
               'icu:LeftPaneChatFolders__ItemUnreadBadge__MaxCount',
               { maxCount: UNREAD_BADGE_MAX_COUNT }
             )}
-            aria-label={null}
+            label={null}
           />
         )}
       </ExperimentalAxoSegmentedControl.Item>
@@ -386,7 +387,7 @@ function ContextMenuMuteNotificationsItem(props: {
   value: number;
   onSelect: (value: number) => void;
   children: ReactNode;
-}): React.JSX.Element {
+}): JSX.Element {
   const { value, onSelect } = props;
   const handleSelect = useCallback(() => {
     onSelect(value);

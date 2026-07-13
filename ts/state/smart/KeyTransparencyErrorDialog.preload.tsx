@@ -1,21 +1,21 @@
 // Copyright 2026 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import { memo, useCallback, useState, useEffect, type JSX } from 'react';
 import { useSelector } from 'react-redux';
 import { ipcRenderer } from 'electron';
 import lodash from 'lodash';
-import { KeyTransparencyErrorDialog } from '../../components/KeyTransparencyErrorDialog.dom.js';
-import { createSupportUrl } from '../../util/createSupportUrl.std.js';
-import { openLinkInWebBrowser } from '../../util/openLinkInWebBrowser.dom.js';
-import { drop } from '../../util/drop.std.js';
-import { useGlobalModalActions } from '../ducks/globalModals.preload.js';
-import { getIntl } from '../selectors/user.std.js';
+import { KeyTransparencyErrorDialog } from '../../components/KeyTransparencyErrorDialog.dom.tsx';
+import { createSupportUrl } from '../../util/createSupportUrl.std.ts';
+import { openLinkInWebBrowser } from '../../util/openLinkInWebBrowser.dom.ts';
+import { drop } from '../../util/drop.std.ts';
+import { useGlobalModalActions } from '../ducks/globalModals.preload.ts';
+import { getIntl } from '../selectors/user.std.ts';
 
 const { noop } = lodash;
 
 export const SmartKeyTransparencyErrorDialog = memo(
-  function SmartKeyTransparencyErrorDialog(): React.JSX.Element | null {
+  function SmartKeyTransparencyErrorDialog(): JSX.Element | null {
     const i18n = useSelector(getIntl);
     const { hideKeyTransparencyErrorDialog } = useGlobalModalActions();
     const [request, setRequest] = useState<

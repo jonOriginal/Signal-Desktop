@@ -1,15 +1,15 @@
 // Copyright 2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import React from 'react';
+import type { JSX } from 'react';
 
 import { action } from '@storybook/addon-actions';
 import type { Meta } from '@storybook/react';
-import { AvatarColors } from '../types/Colors.std.js';
-import type { PropsType } from './AvatarEditor.dom.js';
-import { AvatarEditor } from './AvatarEditor.dom.js';
-import { getDefaultAvatars } from '../types/Avatar.std.js';
-import { createAvatarData } from '../util/createAvatarData.std.js';
+import { AvatarColors } from '../types/Colors.std.ts';
+import type { PropsType } from './AvatarEditor.dom.tsx';
+import { AvatarEditor } from './AvatarEditor.dom.tsx';
+import { getDefaultAvatars } from '../types/Avatar.std.ts';
+import { createAvatarData } from '../util/createAvatarData.std.ts';
 
 const { i18n } = window.SignalContext;
 
@@ -20,6 +20,7 @@ const createProps = (overrideProps: Partial<PropsType> = {}): PropsType => ({
   conversationTitle: overrideProps.conversationTitle || 'Default Title',
   deleteAvatarFromDisk: action('deleteAvatarFromDisk'),
   i18n,
+  isDisplayedAsPanel: false,
   isGroup: Boolean(overrideProps.isGroup),
   onCancel: action('onCancel'),
   onSave: action('onSave'),
@@ -80,7 +81,7 @@ export default {
   title: 'Components/AvatarEditor',
 } satisfies Meta<PropsType>;
 
-export function NoAvatarGroup(): React.JSX.Element {
+export function NoAvatarGroup(): JSX.Element {
   return (
     <AvatarEditor
       {...createProps({
@@ -91,13 +92,13 @@ export function NoAvatarGroup(): React.JSX.Element {
   );
 }
 
-export function NoAvatarMe(): React.JSX.Element {
+export function NoAvatarMe(): JSX.Element {
   return (
     <AvatarEditor {...createProps({ userAvatarData: getDefaultAvatars() })} />
   );
 }
 
-export function HasAvatar(): React.JSX.Element {
+export function HasAvatar(): JSX.Element {
   return (
     <AvatarEditor
       {...createProps({
