@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type {
-  StorageAccessType as Access,
   StorageInterface,
 } from '../types/Storage.d.ts';
+
+import type { StorageAccessType as Access } from '../types/StorageKeys.std.ts';
 import { User } from './storage/User.dom.ts';
 import { Blocked } from './storage/Blocked.std.ts';
 

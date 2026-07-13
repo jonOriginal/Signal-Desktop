@@ -1,7 +1,7 @@
 // Copyright 2019 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { StorageAccessType } from '../types/Storage.d.ts';
+import type { StorageAccessType } from '../types/StorageKeys.std.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
 
 // Matching storage.put API

@@ -2,17 +2,17 @@
 // Copyright 2024 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-const fs = require('node:fs');
-const _ = require('lodash');
-const { default: packageJson } = require('./packageJson.js');
-const { default: defaultsConfig } = require('./defaultsJson.js');
+import fs from 'node:fs';
+import _ from 'lodash';
+import packageJson from '../package.json' with { type: 'json' };
+import defaultsConfig from '../config/default.json' with { type: 'json' };
 
 // ---------------------------
 // Environment variables for prefixes
-const CHANNEL = process.env.SIGNAL_CHANNEL || 'production'; // production, alpha, beta, adhoc
-const DISPLAY_NAME = process.env.DISPLAY_NAME_PREFIX || 'Signal';
-const APP_NAME = process.env.APP_NAME_PREFIX || 'signal';
-const DOMAIN = process.env.DOMAIN_PREFIX || 'org.whispersystems';
+const CHANNEL = process.env.CHANNEL || 'production'; // production, alpha, beta, adhoc
+const DISPLAY_NAME = process.env.DISPLAY_NAME || 'Signal';
+const APP_NAME = process.env.APP_NAME || 'signal';
+const DOMAIN = process.env.DOMAIN || 'org.whispersystems';
 const UPDATE_URL = process.env.UPDATE_URL || 'https://updates.signal.org/desktop';
 
 // ---------------------------
